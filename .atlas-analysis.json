@@ -1,0 +1,85 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Harpoon",
+  "projectDescription": "A Neovim plugin for lightning-fast file navigation with persistent marks and terminal management.",
+  "theme": "aspen",
+  "primaryColor": "#7aa2f7",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "concepts/marks",
+          "concepts/ui",
+          "concepts/terminals"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/setup",
+          "configuration/global-settings",
+          "configuration/project-settings"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/mark",
+          "api/ui",
+          "api/term",
+          "api/tmux"
+        ]
+      },
+      {
+        "group": "Integrations",
+        "pages": [
+          "integrations/telescope"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/tabline",
+          "advanced/logging",
+          "advanced/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Persistent file marks with cursor position tracking",
+    "Quick menu UI for managing and navigating marks",
+    "Built-in terminal management with persistent terminals",
+    "Tmux integration for external terminal control",
+    "Telescope integration for fuzzy finding",
+    "Project-specific and git-branch-specific marks",
+    "Tabline support for visual mark indicators",
+    "Command storage and execution in terminals"
+  ],
+  "publicApiSurface": [
+    "require('harpoon.mark').add_file()",
+    "require('harpoon.mark').rm_file()",
+    "require('harpoon.mark').toggle_file()",
+    "require('harpoon.mark').clear_all()",
+    "require('harpoon.ui').toggle_quick_menu()",
+    "require('harpoon.ui').nav_file(index)",
+    "require('harpoon.ui').nav_next()",
+    "require('harpoon.ui').nav_prev()",
+    "require('harpoon.term').gotoTerminal(index)",
+    "require('harpoon.term').sendCommand(index, command)",
+    "require('harpoon.tmux').gotoTerminal(index)",
+    "require('harpoon.tmux').sendCommand(index, command)",
+    "require('harpoon').setup(config)"
+  ]
+}
