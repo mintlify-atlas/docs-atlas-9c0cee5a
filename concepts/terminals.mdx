@@ -1,0 +1,375 @@
+---
+title: Terminal management
+description: Managing persistent terminals and command execution with Harpoon
+---
+
+Harpoon provides powerful terminal management capabilities, allowing you to maintain persistent terminal sessions and execute commands across multiple terminals. You can choose between native Neovim terminals or tmux integration.
+
+## Native terminal support
+
+Harpoon creates and manages Neovim terminal buffers that persist across sessions.
+
+### Navigating to terminals
+
+Go to a specific terminal by index:
+
+```lua
+local term = require("harpoon.term")
+
+-- Navigate to terminal 1
+term.gotoTerminal(1)
+
+-- Navigate to terminal 2
+term.gotoTerminal(2)
+```
+
+If the terminal doesn't exist, Harpoon creates it automatically:
+
+```lua
+-- From term.lua:34-53
+local function find_terminal(args)
+    if type(args) == "number" then
+        args = { idx = args }
+    end
+    
+    local term_handle = terminals[args.idx]
+    if not term_handle or not vim.api.nvim_buf_is_valid(term_handle.buf_id) then
+        local buf_id, term_id = create_terminal(args.create_with)
+        if buf_id == nil then
+            error("Failed to find and create terminal.")
+            return
+        end
+        
+        term_handle = {
+            buf_id = buf_id,
+            term_id = term_id,
+        }
+        terminals[args.idx] = term_handle
+    end
+    return term_handle
+end
+```
+
+<Note>
+  Terminal buffers are created with `bufhidden=hide` to ensure they persist even when not visible.
+</Note>
+
+### Sending commands to terminals
+
+Execute commands in specific terminals without switching to them:
+
+```lua
+local term = require("harpoon.term")
+
+-- Send a command to terminal 1
+term.sendCommand(1, "npm run dev")
+
+-- Send to terminal 2
+term.sendCommand(2, "cargo watch -x test")
+
+-- Format strings are supported
+term.sendCommand(1, "echo 'Hello %s'", "World")
+```
+
+<Tip>
+  Use `enter_on_sendcmd` configuration to automatically append a newline (Enter key) to executed commands.
+</Tip>
+
+## Saved commands
+
+Store frequently used commands and execute them by index:
+
+### Adding commands
+
+```lua
+local term = require("harpoon.term")
+
+-- Add commands to your config
+term.add_cmd("npm run dev")
+term.add_cmd("cargo test")
+term.add_cmd("python manage.py runserver")
+```
+
+Commands are stored in your Harpoon configuration:
+
+```json
+{
+  "projects": {
+    "/path/to/project": {
+      "term": {
+        "cmds": [
+          "npm run dev",
+          "cargo test",
+          "python manage.py runserver"
+        ]
+      }
+    }
+  }
+}
+```
+
+### Executing saved commands
+
+```lua
+-- Execute command 1 in terminal 1
+term.sendCommand(1, 1)
+
+-- Execute command 2 in terminal 2
+term.sendCommand(2, 2)
+```
+
+From the implementation:
+
+```lua
+-- From term.lua:73-89
+function M.sendCommand(idx, cmd, ...)
+    local term_handle = find_terminal(idx)
+    
+    if type(cmd) == "number" then
+        cmd = harpoon.get_term_config().cmds[cmd]
+    end
+    
+    if global_config.enter_on_sendcmd then
+        cmd = cmd .. "\n"
+    end
+    
+    if cmd then
+        vim.api.nvim_chan_send(term_handle.term_id, string.format(cmd, ...))
+    end
+end
+```
+
+## Tmux integration
+
+For tmux users, Harpoon can manage tmux windows instead of Neovim terminal buffers.
+
+### Using tmux terminals
+
+```lua
+local tmux = require("harpoon.tmux")
+
+-- Navigate to tmux window 1
+tmux.gotoTerminal(1)
+
+-- Send command to tmux window 1
+tmux.sendCommand(1, "npm run build")
+
+-- Target a specific tmux pane
+tmux.sendCommand("%1", "echo 'Hello from pane 1'")
+```
+
+<AccordionGroup>
+  <Accordion title="How tmux integration works">
+    Harpoon creates new tmux windows and tracks them by pane ID:
+
+    ```lua
+    -- From tmux.lua:23-46
+    local function create_terminal()
+        local window_id
+        
+        -- Create a new tmux window and store the window id
+        local out, ret, _ = utils.get_os_command_output({
+            "tmux",
+            "new-window",
+            "-P",
+            "-F",
+            "#{pane_id}",
+        }, vim.loop.cwd())
+        
+        if ret == 0 then
+            window_id = out[1]:sub(2)
+        end
+        
+        if window_id == nil then
+            error("window_id is nil")
+            return nil
+        end
+        
+        return window_id
+    end
+    ```
+  </Accordion>
+
+  <Accordion title="Auto-closing tmux windows">
+    Configure Harpoon to automatically close tmux windows when exiting Neovim:
+
+    ```lua
+    require("harpoon").setup({
+        global_settings = {
+            tmux_autoclose_windows = true,
+        },
+    })
+    ```
+
+    This is implemented via autocmd:
+
+    ```lua
+    -- From tmux.lua:9-21
+    if global_config.tmux_autoclose_windows then
+        local harpoon_tmux_group = vim.api.nvim_create_augroup(
+            "HARPOON_TMUX",
+            { clear = true }
+        )
+        
+        vim.api.nvim_create_autocmd("VimLeave", {
+            callback = function()
+                require("harpoon.tmux").clear_all()
+            end,
+            group = harpoon_tmux_group,
+        })
+    end
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Tmux vs native terminals
+
+<Tabs>
+  <Tab title="Native terminals">
+    **Advantages:**
+    - Integrated directly in Neovim
+    - No external dependencies
+    - Simpler setup
+
+    **Use when:**
+    - You don't use tmux
+    - You want terminals within Neovim windows
+    - You prefer a unified Neovim experience
+
+    ```lua
+    local term = require("harpoon.term")
+    term.gotoTerminal(1)
+    term.sendCommand(1, "npm test")
+    ```
+  </Tab>
+
+  <Tab title="Tmux integration">
+    **Advantages:**
+    - Terminals persist even if Neovim crashes
+    - Can access terminals outside Neovim
+    - Better for long-running processes
+    - Supports more advanced terminal multiplexing
+
+    **Use when:**
+    - You're already using tmux
+    - You want terminals that outlive Neovim sessions
+    - You need to access terminals from multiple Neovim instances
+
+    ```lua
+    local tmux = require("harpoon.tmux")
+    tmux.gotoTerminal(1)
+    tmux.sendCommand(1, "npm test")
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Don't mix `harpoon.term` and `harpoon.tmux` in the same workflow - choose one approach and stick with it.
+</Warning>
+
+## Configuration options
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        -- Automatically append Enter to commands
+        enter_on_sendcmd = true,
+        
+        -- Auto-close tmux windows on exit
+        tmux_autoclose_windows = true,
+        
+        -- Save terminal commands on change
+        save_on_change = true,
+    },
+})
+```
+
+<AccordionGroup>
+  <Accordion title="enter_on_sendcmd">
+    When `true`, automatically appends `\n` to commands sent via `sendCommand`:
+
+    ```lua
+    -- With enter_on_sendcmd = true
+    term.sendCommand(1, "ls")  -- Executes immediately
+    
+    -- With enter_on_sendcmd = false
+    term.sendCommand(1, "ls")  -- Types "ls" but doesn't execute
+    term.sendCommand(1, "ls\n")  -- Must manually add newline
+    ```
+  </Accordion>
+
+  <Accordion title="save_on_change">
+    When `true`, automatically saves terminal commands to disk whenever they're modified:
+
+    ```lua
+    -- From term.lua:111-116
+    function M.emit_changed()
+        if harpoon.get_global_settings().save_on_change then
+            harpoon.save()
+        end
+    end
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Managing terminal commands
+
+```lua
+local term = require("harpoon.term")
+
+-- Add a new command
+term.add_cmd("docker compose up")
+
+-- Remove command at index 2
+term.rm_cmd(2)
+
+-- Replace all commands
+term.set_cmd_list({
+    "npm run dev",
+    "npm test",
+    "npm run build",
+})
+
+-- Get number of saved commands
+local count = term.get_length()
+
+-- Clear all terminals
+term.clear_all()
+```
+
+## Example workflows
+
+### Development server workflow
+
+```lua
+-- Setup keybindings for a typical dev workflow
+local term = require("harpoon.term")
+
+-- Terminal 1: Dev server
+vim.keymap.set("n", "<leader>td", function()
+    term.gotoTerminal(1)
+    term.sendCommand(1, "npm run dev")
+end)
+
+-- Terminal 2: Tests
+vim.keymap.set("n", "<leader>tt", function()
+    term.gotoTerminal(2)
+    term.sendCommand(2, "npm test -- --watch")
+end)
+
+-- Terminal 3: Build
+vim.keymap.set("n", "<leader>tb", function()
+    term.sendCommand(3, "npm run build")
+end)
+```
+
+### Quick terminal access
+
+```lua
+-- Jump to terminals with leader + number
+for i = 1, 5 do
+    vim.keymap.set("n", "<leader>" .. i, function()
+        require("harpoon.term").gotoTerminal(i)
+    end)
+end
+```

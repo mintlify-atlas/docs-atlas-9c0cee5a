@@ -1,0 +1,136 @@
+---
+title: 'Telescope Integration'
+description: 'Browse and manage your Harpoon marks using Telescope'
+---
+
+Harpoon provides a native integration with [Telescope](https://github.com/nvim-telescope/telescope.nvim), allowing you to view, navigate, and manage your marks through Telescope's powerful fuzzy finder interface.
+
+## Setup
+
+<Steps>
+  <Step title="Install Telescope">
+    Make sure you have Telescope installed. Add it to your plugin manager:
+
+    ```lua
+    -- Using lazy.nvim
+    {
+      'nvim-telescope/telescope.nvim',
+      dependencies = { 'nvim-lua/plenary.nvim' }
+    }
+    ```
+  </Step>
+
+  <Step title="Register the Harpoon Extension">
+    Load the Harpoon extension after Telescope is set up:
+
+    ```lua
+    require("telescope").load_extension('harpoon')
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The Telescope extension is automatically available once Harpoon is installed. You only need to load it with `load_extension()`.
+</Note>
+
+## Usage
+
+### Opening the Marks Picker
+
+Once the extension is loaded, you can open the Harpoon marks picker using the Telescope command:
+
+```vim
+:Telescope harpoon marks
+```
+
+This opens a Telescope picker displaying all your Harpoon marks with the following information:
+
+- **Mark index** - The number assigned to each mark
+- **File path** - The path to the marked file
+- **Line and column** - The cursor position saved with the mark (e.g., `filename.lua:42:8`)
+
+### Keybinding Setup
+
+Set up a convenient keybinding to quickly access your marks:
+
+<CodeGroup>
+```lua Lua Configuration
+vim.keymap.set('n', '<leader>fm', ':Telescope harpoon marks<CR>', 
+  { desc = 'Find Harpoon marks' })
+```
+
+```vim Vimscript Configuration
+nnoremap <leader>fm :Telescope harpoon marks<CR>
+```
+</CodeGroup>
+
+### Interactive Actions
+
+The Telescope picker provides several actions for managing marks:
+
+| Keybinding | Mode | Action |
+|------------|------|--------|
+| `<CR>` | Normal/Insert | Open the selected mark |
+| `<C-d>` | Normal/Insert | Delete the current mark (with confirmation) |
+| `<C-p>` | Normal/Insert | Move mark up in the list |
+| `<C-n>` | Normal/Insert | Move mark down in the list |
+
+<Note>
+  When deleting marks with `<C-d>`, you'll be prompted to confirm the deletion. You can also select multiple marks and delete them together.
+</Note>
+
+## Complete Example
+
+Here's a complete configuration example with Harpoon and Telescope:
+
+```lua
+-- Configure Harpoon
+require("harpoon").setup({
+  global_settings = {
+    save_on_toggle = false,
+    save_on_change = true,
+    enter_on_sendcmd = false,
+  },
+})
+
+-- Load Telescope extension
+require("telescope").load_extension('harpoon')
+
+-- Set up keybindings
+local mark = require("harpoon.mark")
+local ui = require("harpoon.ui")
+
+-- Harpoon keybindings
+vim.keymap.set('n', '<leader>a', mark.add_file, { desc = 'Add file to Harpoon' })
+vim.keymap.set('n', '<C-e>', ui.toggle_quick_menu, { desc = 'Toggle Harpoon menu' })
+
+-- Telescope Harpoon keybinding
+vim.keymap.set('n', '<leader>fm', ':Telescope harpoon marks<CR>', 
+  { desc = 'Find Harpoon marks' })
+
+-- Quick navigation
+vim.keymap.set('n', '<C-h>', function() ui.nav_file(1) end, { desc = 'Go to mark 1' })
+vim.keymap.set('n', '<C-t>', function() ui.nav_file(2) end, { desc = 'Go to mark 2' })
+vim.keymap.set('n', '<C-n>', function() ui.nav_file(3) end, { desc = 'Go to mark 3' })
+vim.keymap.set('n', '<C-s>', function() ui.nav_file(4) end, { desc = 'Go to mark 4' })
+```
+
+## What the Telescope Picker Shows
+
+The Telescope picker displays your marks in a structured format:
+
+```
+1  - src/config/init.lua:15:0
+2  - lua/harpoon/mark.lua:42:4
+3  - README.md:1:0
+```
+
+Each entry shows:
+- The mark's **index number** (1, 2, 3, etc.)
+- The **file path** relative to your project root
+- The **row:column** position where the cursor will be placed
+
+The picker includes Telescope's standard features:
+- **Fuzzy finding** - Type to filter marks by filename
+- **File preview** - See the file contents with the cursor position highlighted
+- **Multi-select** - Select multiple marks for batch operations

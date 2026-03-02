@@ -1,0 +1,255 @@
+---
+title: Logging & Debugging
+description: Configure Harpoon's logging system to debug issues and understand behavior
+---
+
+Harpoon includes a comprehensive logging system that can help you debug issues, understand plugin behavior, and diagnose problems with marks or configuration.
+
+## Log File Location
+
+Logs are written to `harpoon.log` in your Neovim cache directory. To find the exact location:
+
+```vim
+:echo stdpath("cache")
+```
+
+The log file will be at `{cache_path}/harpoon.log`.
+
+Common locations:
+- **Linux/macOS**: `~/.cache/nvim/harpoon.log`
+- **Windows**: `%LOCALAPPDATA%\nvim-data\harpoon.log`
+
+## Log Levels
+
+Harpoon supports six log levels, from most verbose to least:
+
+| Level | Purpose | When to Use |
+|-------|---------|-------------|
+| `trace` | Most detailed logging | Deep debugging, following execution flow |
+| `debug` | Detailed debugging information | Troubleshooting mark behavior, configuration issues |
+| `info` | Informational messages | General monitoring |
+| `warn` | Warning messages (default) | Potential issues that don't break functionality |
+| `error` | Error messages | When operations fail |
+| `fatal` | Fatal errors | Critical failures |
+
+<Note>
+The default log level is `warn`. Higher verbosity levels (`trace`, `debug`) will significantly increase log file size.
+</Note>
+
+## Setting the Log Level
+
+There are two ways to configure the log level:
+
+### Method 1: Using Vim Global Variable
+
+Set the log level before calling `setup()`:
+
+```lua
+-- Set log level before setup
+vim.g.harpoon_log_level = "debug"
+
+require("harpoon").setup({
+    -- your configuration
+})
+```
+
+<Warning>
+The `vim.g.harpoon_log_level` variable **must** be set before calling `setup()`. Setting it afterward will have no effect.
+</Warning>
+
+### Method 2: Using Environment Variable
+
+The `HARPOON_LOG` environment variable takes precedence over `vim.g.harpoon_log_level`:
+
+<CodeGroup>
+```bash Linux/macOS
+HARPOON_LOG=debug nvim
+```
+
+```bash Fish shell
+env HARPOON_LOG=debug nvim
+```
+
+```powershell Windows PowerShell
+$env:HARPOON_LOG="debug"
+nvim
+```
+
+```cmd Windows CMD
+set HARPOON_LOG=debug
+nvim
+```
+</CodeGroup>
+
+This is useful for:
+- One-time debugging sessions
+- Testing without modifying your config
+- CI/CD environments
+
+## Validation
+
+If you set an invalid log level, Harpoon will default back to `warn`:
+
+```lua
+-- This will default to "warn"
+vim.g.harpoon_log_level = "verbose"  -- Invalid level
+```
+
+Valid values are: `trace`, `debug`, `info`, `warn`, `error`, `fatal`
+
+## Viewing Logs
+
+You can view logs in real-time while using Neovim:
+
+```bash
+# In a separate terminal
+tail -f ~/.cache/nvim/harpoon.log
+```
+
+Or open the log file directly in Neovim:
+
+```vim
+:e ~/.cache/nvim/harpoon.log
+```
+
+## What Gets Logged
+
+Different operations log at different levels:
+
+### Trace Level
+- Function entry/exit
+- Configuration details
+- Mark list operations
+- All debug information plus execution flow
+
+### Debug Level  
+- Mark creation and updates
+- File path normalization
+- Configuration merging
+- Project key generation
+- Cursor position storage
+
+### Warn Level (Default)
+- Potential issues (e.g., could not store offset)
+- Missing configurations
+- Deprecated usage
+
+### Error Level
+- Invalid operations (e.g., adding harpoon to itself)
+- Validation failures
+- File operation errors
+
+## Common Debugging Scenarios
+
+<Accordion title="Marks not persisting between sessions">
+Set log level to `debug` and check for:
+
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Look for messages about:
+- `save()`: Whether marks are being saved
+- `ensure_correct_config()`: Configuration validation
+- File paths being normalized
+
+Common issues:
+- `save_on_change = false` in config
+- File permission issues in cache directory
+</Accordion>
+
+<Accordion title="Marks pointing to wrong files">
+Enable debug logging and check:
+
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Look for:
+- `normalize_path()` calls
+- `project_key()` or `branch_key()` output
+- Path resolution in `create_mark()`
+
+Common causes:
+- Working directory changes
+- Symbolic links
+- `mark_branch = true` with git branch switching
+</Accordion>
+
+<Accordion title="Tabline not updating">
+Set to debug level:
+
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Monitor:
+- `emit_changed()` calls
+- Tabline setup messages
+- Redraw commands
+
+Check:
+- `save_on_change = true` in config
+- No other plugins overriding tabline
+</Accordion>
+
+<Accordion title="Performance issues">
+Use info or debug level:
+
+```lua
+vim.g.harpoon_log_level = "info"
+```
+
+Watch for:
+- Excessive `save()` calls
+- Repeated config reads
+- Mark validation operations
+
+Optimizations:
+- Ensure `save_on_toggle = false` unless needed
+- Reduce number of marks if very large
+</Accordion>
+
+## Example Debug Session
+
+Here's a complete example of debugging mark issues:
+
+```lua
+-- In your init.lua or harpoon config
+vim.g.harpoon_log_level = "debug"
+
+require("harpoon").setup({
+    global_settings = {
+        save_on_toggle = false,
+        save_on_change = true,
+    }
+})
+```
+
+```bash
+# In a separate terminal
+tail -f ~/.cache/nvim/harpoon.log | grep -E "(add_file|save|mark)"
+```
+
+Then in Neovim:
+1. Add a file to harpoon
+2. Navigate away and back
+3. Check the log output
+
+## Disabling Logging
+
+To minimize logging (e.g., in production):
+
+```lua
+vim.g.harpoon_log_level = "error"  -- Only critical errors
+```
+
+Or for completely silent operation:
+
+```lua
+vim.g.harpoon_log_level = "fatal"  -- Only fatal errors
+```
+
+<Note>
+Even with minimal logging, the log file will still be created. Harpoon uses [plenary.log](https://github.com/nvim-lua/plenary.nvim) for its logging implementation.
+</Note>

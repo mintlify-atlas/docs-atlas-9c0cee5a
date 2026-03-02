@@ -1,0 +1,324 @@
+---
+title: 'Terminal API'
+description: 'Built-in terminal management functions for Neovim terminals'
+icon: 'terminal'
+---
+
+The terminal API provides functions for managing Neovim's built-in terminal buffers through Harpoon. Each terminal is identified by an index.
+
+<Note>
+  The `term` API manages Neovim's built-in `:terminal`. For tmux integration, see the [Tmux API](/api/tmux).
+</Note>
+
+## gotoTerminal
+
+Navigate to a terminal by index, creating it if it doesn't exist.
+
+```lua
+require("harpoon.term").gotoTerminal(idx)
+```
+
+<ParamField path="idx" type="number" required>
+  Terminal index (1-based)
+</ParamField>
+
+### Behavior
+
+- Switches to the terminal buffer at the specified index
+- Creates a new `:terminal` if one doesn't exist at that index
+- Reuses existing terminal buffers
+- Terminal buffers are set to `bufhidden=hide` to persist when hidden
+
+### Example
+
+```lua
+local term = require("harpoon.term")
+
+-- Navigate to terminal 1
+term.gotoTerminal(1)
+
+-- Navigate to terminal 2 (creates if doesn't exist)
+term.gotoTerminal(2)
+
+-- Common keymap setup
+vim.keymap.set("n", "<leader>t1", function()
+    term.gotoTerminal(1)
+end, { desc = "Go to terminal 1" })
+
+vim.keymap.set("n", "<leader>t2", function()
+    term.gotoTerminal(2)
+end, { desc = "Go to terminal 2" })
+```
+
+---
+
+## sendCommand
+
+Send a command to a terminal by index.
+
+```lua
+require("harpoon.term").sendCommand(idx, cmd, ...)
+```
+
+<ParamField path="idx" type="number" required>
+  Terminal index (1-based)
+</ParamField>
+
+<ParamField path="cmd" type="string | number" required>
+  Command string to send, or command index from config
+</ParamField>
+
+<ParamField path="..." type="any" optional>
+  Format arguments for string.format() if cmd contains format specifiers
+</ParamField>
+
+### Behavior
+
+- Sends the command to the terminal channel
+- Creates terminal if it doesn't exist
+- Appends newline if `enter_on_sendcmd` is enabled in config
+- If `cmd` is a number, retrieves the command from `harpoon.setup({ ... term = { cmds = {...} } })`
+- Supports `string.format()` style arguments
+
+### Examples
+
+<CodeGroup>
+```lua Basic Usage
+local term = require("harpoon.term")
+
+-- Send a simple command
+term.sendCommand(1, "ls -la")
+
+-- Send command with enter
+-- (if enter_on_sendcmd = true in config)
+term.sendCommand(1, "npm test")
+
+-- Send to terminal 2
+term.sendCommand(2, "git status")
+```
+
+```lua With Config Commands
+-- In your Harpoon setup
+require("harpoon").setup({
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test",
+            "git status",
+        }
+    }
+})
+
+local term = require("harpoon.term")
+
+-- Send command by index from config
+term.sendCommand(1, 1)  -- Sends "npm run dev"
+term.sendCommand(1, 2)  -- Sends "npm test"
+term.sendCommand(2, 3)  -- Sends "git status" to terminal 2
+```
+
+```lua With Format Arguments
+local term = require("harpoon.term")
+
+-- Use string.format() style arguments
+term.sendCommand(1, "echo 'Processing %s'", "file.txt")
+term.sendCommand(1, "curl -X %s %s", "GET", "https://api.example.com")
+
+-- Format with multiple arguments
+term.sendCommand(1, "git commit -m '%s: %s'", "feat", "add new feature")
+```
+
+```lua Keymaps
+vim.keymap.set("n", "<leader>ts", function()
+    local cmd = vim.fn.input("Command: ")
+    require("harpoon.term").sendCommand(1, cmd)
+end, { desc = "Send command to terminal 1" })
+
+vim.keymap.set("n", "<leader>tc", function()
+    require("harpoon.term").sendCommand(1, 1)  -- Send first config command
+end, { desc = "Run dev server" })
+```
+</CodeGroup>
+
+---
+
+## clear_all
+
+Close and delete all terminal buffers.
+
+```lua
+require("harpoon.term").clear_all()
+```
+
+### Behavior
+
+- Closes all Harpoon-managed terminal buffers
+- Force deletes buffers even if unsaved
+- Clears the internal terminal registry
+- Terminal indices can be reused after clearing
+
+### Example
+
+```lua
+local term = require("harpoon.term")
+
+-- Clean up all terminals
+term.clear_all()
+
+-- Useful when resetting your workspace
+vim.keymap.set("n", "<leader>tc", function()
+    require("harpoon.term").clear_all()
+end, { desc = "Clear all Harpoon terminals" })
+```
+
+---
+
+## Configuration
+
+The terminal API respects these configuration options:
+
+<CodeGroup>
+```lua Configuration
+require("harpoon").setup({
+    -- Global settings
+    enter_on_sendcmd = true,  -- Auto-append newline to commands
+    save_on_change = true,    -- Auto-save terminal commands
+
+    -- Terminal-specific settings
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test",
+            "npm run build",
+            "docker-compose up",
+        }
+    }
+})
+```
+</CodeGroup>
+
+### Config Options
+
+<ParamField path="enter_on_sendcmd" type="boolean" default="false">
+  Automatically append `\n` to commands sent via `sendCommand()`
+</ParamField>
+
+<ParamField path="save_on_change" type="boolean" default="false">
+  Automatically save terminal command list when modified
+</ParamField>
+
+<ParamField path="term.cmds" type="string[]" default="[]">
+  List of preset commands accessible by index in `sendCommand()`
+</ParamField>
+
+---
+
+## Complete Workflow Example
+
+Here's a complete example showing typical terminal workflow:
+
+<CodeGroup>
+```lua Setup
+-- In your Neovim config
+require("harpoon").setup({
+    enter_on_sendcmd = true,
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test",
+            "git status",
+        }
+    }
+})
+
+local term = require("harpoon.term")
+
+-- Terminal navigation
+vim.keymap.set("n", "<leader>tt", function()
+    term.gotoTerminal(1)
+end, { desc = "Go to terminal 1" })
+
+vim.keymap.set("n", "<leader>t2", function()
+    term.gotoTerminal(2)
+end, { desc = "Go to terminal 2" })
+
+-- Send preset commands
+vim.keymap.set("n", "<leader>td", function()
+    term.sendCommand(1, 1)  -- npm run dev
+end, { desc = "Start dev server" })
+
+vim.keymap.set("n", "<leader>tt", function()
+    term.sendCommand(2, 2)  -- npm test
+end, { desc = "Run tests" })
+
+-- Send custom command
+vim.keymap.set("n", "<leader>ts", function()
+    local cmd = vim.fn.input("Command: ")
+    term.sendCommand(1, cmd)
+end, { desc = "Send command to terminal" })
+
+-- Clear all terminals
+vim.keymap.set("n", "<leader>tc", function()
+    term.clear_all()
+end, { desc = "Clear all terminals" })
+```
+
+```lua Usage
+local term = require("harpoon.term")
+
+-- Create terminals for different tasks
+term.gotoTerminal(1)  -- Development server terminal
+term.sendCommand(1, "npm run dev")
+
+term.gotoTerminal(2)  -- Testing terminal
+term.sendCommand(2, "npm test -- --watch")
+
+term.gotoTerminal(3)  -- Git terminal
+term.sendCommand(3, "git status")
+
+-- Switch between them
+term.gotoTerminal(1)  -- Back to dev server
+term.gotoTerminal(2)  -- Check tests
+
+-- Clean up when done
+term.clear_all()
+```
+</CodeGroup>
+
+---
+
+## Internal Functions
+
+These functions are available but typically not needed for normal usage:
+
+### get_length
+
+Get the number of configured terminal commands.
+
+```lua
+local count = require("harpoon.term").get_length()
+```
+
+### valid_index
+
+Check if a terminal index is valid.
+
+```lua
+local is_valid = require("harpoon.term").valid_index(idx)
+```
+
+### add_cmd
+
+Add a command to the terminal command list.
+
+```lua
+require("harpoon.term").add_cmd("npm run build")
+```
+
+### rm_cmd
+
+Remove a command from the terminal command list by index.
+
+```lua
+require("harpoon.term").rm_cmd(2)  -- Remove second command
+```

@@ -1,0 +1,309 @@
+---
+title: 'UI API'
+description: 'User interface functions for interacting with Harpoon marks'
+icon: 'window'
+---
+
+The UI API provides functions for displaying and navigating the Harpoon quick menu and switching between marked files.
+
+## toggle_quick_menu
+
+Toggle the Harpoon quick menu popup window.
+
+```lua
+require("harpoon.ui").toggle_quick_menu()
+```
+
+### Behavior
+
+- Opens the quick menu if closed
+- Closes the quick menu if already open
+- Displays all marks in an editable buffer
+- Highlights current file in the list
+- Auto-saves changes based on configuration
+
+### Quick Menu Features
+
+<CardGroup cols={2}>
+  <Card title="Edit Marks" icon="pen-to-square">
+    Edit filenames directly in the menu
+  </Card>
+  <Card title="Reorder" icon="arrows-up-down">
+    Cut and paste lines to reorder marks
+  </Card>
+  <Card title="Delete" icon="trash">
+    Delete lines to remove marks
+  </Card>
+  <Card title="Navigate" icon="arrow-pointer">
+    Press Enter to jump to a mark
+  </Card>
+</CardGroup>
+
+### Keybindings
+
+The quick menu includes these default keybindings:
+
+- `<CR>` (Enter): Select and navigate to mark
+- `q`: Close menu
+- `<ESC>`: Close menu
+
+### Example
+
+```lua
+local ui = require("harpoon.ui")
+
+-- Toggle the menu
+ui.toggle_quick_menu()
+
+-- Common keymap setup
+vim.keymap.set("n", "<leader>h", function()
+    ui.toggle_quick_menu()
+end)
+```
+
+---
+
+## nav_file
+
+Navigate to a marked file by index or filename.
+
+```lua
+require("harpoon.ui").nav_file(id)
+```
+
+<ParamField path="id" type="number | string" required>
+  Mark index (number) or filename (string)
+</ParamField>
+
+### Behavior
+
+- Switches to the marked file in the current window
+- Creates buffer if file is not already loaded
+- Restores cursor position to saved row/col
+- Deletes unnamed empty buffers automatically
+- Does nothing if mark doesn't exist
+
+### Example
+
+```lua
+local ui = require("harpoon.ui")
+
+-- Navigate to mark 1
+ui.nav_file(1)
+
+-- Navigate by filename
+ui.nav_file("/path/to/file.lua")
+
+-- Common keymap setup for quick navigation
+vim.keymap.set("n", "<leader>1", function()
+    ui.nav_file(1)
+end)
+vim.keymap.set("n", "<leader>2", function()
+    ui.nav_file(2)
+end)
+vim.keymap.set("n", "<leader>3", function()
+    ui.nav_file(3)
+end)
+vim.keymap.set("n", "<leader>4", function()
+    ui.nav_file(4)
+end)
+```
+
+---
+
+## nav_next
+
+Navigate to the next mark in the list (cycles).
+
+```lua
+require("harpoon.ui").nav_next()
+```
+
+### Behavior
+
+- Moves to the next mark in sequence
+- Wraps around to first mark when at the end
+- If current file is not marked, navigates to mark 1
+- Cycles through all marks continuously
+
+### Example
+
+```lua
+local ui = require("harpoon.ui")
+
+-- Navigate to next mark
+ui.nav_next()
+
+-- Common keymap setup for cycling
+vim.keymap.set("n", "<C-n>", function()
+    ui.nav_next()
+end)
+```
+
+---
+
+## nav_prev
+
+Navigate to the previous mark in the list (cycles).
+
+```lua
+require("harpoon.ui").nav_prev()
+```
+
+### Behavior
+
+- Moves to the previous mark in sequence
+- Wraps around to last mark when at the beginning
+- If current file is not marked, navigates to the last mark
+- Cycles through all marks continuously
+
+### Example
+
+```lua
+local ui = require("harpoon.ui")
+
+-- Navigate to previous mark
+ui.nav_prev()
+
+-- Common keymap setup for cycling
+vim.keymap.set("n", "<C-p>", function()
+    ui.nav_prev()
+end)
+```
+
+---
+
+## select_menu_item
+
+Select the mark at the current cursor line in the quick menu.
+
+```lua
+require("harpoon.ui").select_menu_item()
+```
+
+### Behavior
+
+- Gets the mark index from current line number
+- Saves any menu changes
+- Closes the quick menu
+- Navigates to the selected mark
+
+<Note>
+  This function is automatically called when pressing `<CR>` in the quick menu.
+</Note>
+
+### Example
+
+```lua
+local ui = require("harpoon.ui")
+
+-- This is typically bound in the quick menu buffer
+-- Default binding: <CR>
+vim.api.nvim_buf_set_keymap(
+    bufnr,
+    "n",
+    "<CR>",
+    "<Cmd>lua require('harpoon.ui').select_menu_item()<CR>",
+    {}
+)
+```
+
+---
+
+## Complete Navigation Workflow
+
+Here's a complete example showing typical Harpoon UI usage:
+
+<CodeGroup>
+```lua Keymaps
+-- File marks
+vim.keymap.set("n", "<leader>a", function()
+    require("harpoon.mark").add_file()
+end, { desc = "Add file to Harpoon" })
+
+vim.keymap.set("n", "<leader>h", function()
+    require("harpoon.ui").toggle_quick_menu()
+end, { desc = "Toggle Harpoon menu" })
+
+-- Quick navigation
+vim.keymap.set("n", "<leader>1", function()
+    require("harpoon.ui").nav_file(1)
+end, { desc = "Go to mark 1" })
+
+vim.keymap.set("n", "<leader>2", function()
+    require("harpoon.ui").nav_file(2)
+end, { desc = "Go to mark 2" })
+
+vim.keymap.set("n", "<leader>3", function()
+    require("harpoon.ui").nav_file(3)
+end, { desc = "Go to mark 3" })
+
+vim.keymap.set("n", "<leader>4", function()
+    require("harpoon.ui").nav_file(4)
+end, { desc = "Go to mark 4" })
+
+-- Cycle through marks
+vim.keymap.set("n", "<C-S-N>", function()
+    require("harpoon.ui").nav_next()
+end, { desc = "Next Harpoon mark" })
+
+vim.keymap.set("n", "<C-S-P>", function()
+    require("harpoon.ui").nav_prev()
+end, { desc = "Previous Harpoon mark" })
+```
+
+```lua Usage
+local mark = require("harpoon.mark")
+local ui = require("harpoon.ui")
+
+-- Add files to Harpoon
+mark.add_file("src/main.lua")
+mark.add_file("src/config.lua")
+mark.add_file("tests/main_spec.lua")
+
+-- Open quick menu to view/edit marks
+ui.toggle_quick_menu()
+
+-- Navigate directly to marks
+ui.nav_file(1)  -- Jump to first mark
+ui.nav_file(2)  -- Jump to second mark
+
+-- Cycle through marks
+ui.nav_next()  -- Next mark
+ui.nav_prev()  -- Previous mark
+```
+</CodeGroup>
+
+---
+
+## Advanced Functions
+
+### on_menu_save
+
+Manually trigger saving the quick menu state to marks.
+
+```lua
+require("harpoon.ui").on_menu_save()
+```
+
+<Note>
+  This is called automatically when the menu is saved or when `save_on_change` is enabled.
+</Note>
+
+### location_window
+
+Create a floating window (used internally by the quick menu).
+
+```lua
+local win_info = require("harpoon.ui").location_window(options)
+```
+
+<ParamField path="options" type="table" optional>
+  Window configuration options (relative, width, height, row, col, etc.)
+</ParamField>
+
+<ResponseField name="return" type="table">
+  Returns table with:
+  - `bufnr`: Buffer number
+  - `win_id`: Window ID
+</ResponseField>

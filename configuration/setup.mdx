@@ -1,0 +1,179 @@
+---
+title: 'Setup & Initialization'
+description: 'Configure Harpoon for your workflow'
+---
+
+## Basic Setup
+
+Harpoon is configured through its `setup()` function. You can call it in your Neovim configuration file:
+
+```lua
+require("harpoon").setup()
+```
+
+This initializes Harpoon with default settings. For custom configuration, pass a table to `setup()`:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        save_on_toggle = false,
+        save_on_change = true,
+    },
+    projects = {
+        ["/path/to/project"] = {
+            term = {
+                cmds = { "npm run dev" }
+            }
+        }
+    }
+})
+```
+
+## Configuration File Locations
+
+Harpoon uses two JSON files to store configuration and state:
+
+<ParamField path="Config Path" type="string" default="~/.config/nvim/harpoon.json">
+  User-defined configuration file. This is where you can manually edit settings that persist across sessions.
+  
+  Located at: `vim.fn.stdpath("config") .. "/harpoon.json"`
+</ParamField>
+
+<ParamField path="Data Path" type="string" default="~/.local/share/nvim/harpoon.json">
+  Runtime cache and data storage. Harpoon automatically saves marks and state here.
+  
+  Located at: `vim.fn.stdpath("data") .. "/harpoon.json"`
+</ParamField>
+
+<Note>
+  The config path (`~/.config/nvim/harpoon.json`) takes precedence over the data path. Harpoon merges configurations from both locations, with later values overriding earlier ones.
+</Note>
+
+## Configuration Precedence
+
+Harpoon merges configuration from multiple sources in this order:
+
+1. Default settings (built into Harpoon)
+2. Cache config from data path (`~/.local/share/nvim/harpoon.json`)
+3. User config from config path (`~/.config/nvim/harpoon.json`)
+4. Runtime config passed to `setup()`
+
+Later configurations override earlier ones, so your `setup()` call has the highest priority.
+
+## Minimal Configuration
+
+The absolute minimal setup - just load Harpoon with defaults:
+
+```lua
+require("harpoon").setup()
+```
+
+This gives you:
+- File marks per project
+- Auto-save on file changes
+- No terminal command automation
+- Single project workspace (not git branch-specific)
+
+## Full Configuration Example
+
+A complete configuration showcasing all available options:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        -- Save marks when toggling the menu
+        save_on_toggle = false,
+        
+        -- Save marks on every change (recommended)
+        save_on_change = true,
+        
+        -- Automatically press Enter after sending command to terminal
+        enter_on_sendcmd = false,
+        
+        -- Close tmux windows when Neovim exits
+        tmux_autoclose_windows = false,
+        
+        -- Don't add these file types to marks
+        excluded_filetypes = { "harpoon", "NvimTree", "TelescopePrompt" },
+        
+        -- Store marks per git branch instead of per project
+        mark_branch = false,
+        
+        -- Enable tabline showing harpoon marks
+        tabline = false,
+        tabline_prefix = "   ",
+        tabline_suffix = "   ",
+    },
+    
+    projects = {
+        -- Project-specific configurations
+        ["~/projects/web-app"] = {
+            term = {
+                cmds = {
+                    "npm run dev",
+                    "npm test",
+                    "npm run build"
+                }
+            }
+        },
+        
+        ["~/projects/api-server"] = {
+            term = {
+                cmds = {
+                    "go run main.go",
+                    "go test ./..."
+                }
+            }
+        }
+    },
+    
+    -- Customize menu appearance
+    menu = {
+        width = vim.api.nvim_win_get_width(0) - 4,
+    }
+})
+```
+
+## Dynamic Configuration
+
+You can make configuration dynamic based on your environment:
+
+```lua
+local width = vim.api.nvim_win_get_width(0)
+
+require("harpoon").setup({
+    menu = {
+        -- Set menu width relative to current window
+        width = math.min(width - 4, 120),
+    },
+    global_settings = {
+        -- Use branch-specific marks in git repos
+        mark_branch = vim.fn.isdirectory(".git") == 1,
+    }
+})
+```
+
+<Warning>
+  Always call `setup()` before using any Harpoon functionality. It initializes the internal state and loads persisted data.
+</Warning>
+
+## Verifying Configuration
+
+To debug or verify your current configuration:
+
+```lua
+:lua require("harpoon").print_config()
+```
+
+This prints the complete merged configuration to the command line.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Global Settings" icon="globe" href="/configuration/global-settings">
+    Configure behavior that applies across all projects
+  </Card>
+  <Card title="Project Settings" icon="folder" href="/configuration/project-settings">
+    Set up project-specific commands and marks
+  </Card>
+</CardGroup>

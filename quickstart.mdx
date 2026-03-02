@@ -1,80 +1,198 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Start using Harpoon in under 2 minutes
 ---
 
-## Get started in three steps
-
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will get you up and running with Harpoon quickly. You'll learn how to mark files and navigate between them using the most common workflows.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you've [installed Harpoon](/installation) before following this guide.
 </Note>
+
+## Set up keybindings
+
+<Steps>
+  <Step title="Add basic keybindings to your config">
+    Open your Neovim configuration file (usually `~/.config/nvim/init.lua` or `~/.config/nvim/lua/config/keymaps.lua`) and add these keybindings:
+
+    ```lua
+    local mark = require("harpoon.mark")
+    local ui = require("harpoon.ui")
+
+    -- Add current file to Harpoon
+    vim.keymap.set("n", "<leader>a", mark.add_file, { desc = "Harpoon: Add file" })
+
+    -- Toggle the Harpoon quick menu
+    vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu, { desc = "Harpoon: Toggle menu" })
+
+    -- Navigate to Harpoon marks 1-4
+    vim.keymap.set("n", "<C-h>", function() ui.nav_file(1) end, { desc = "Harpoon: Go to file 1" })
+    vim.keymap.set("n", "<C-t>", function() ui.nav_file(2) end, { desc = "Harpoon: Go to file 2" })
+    vim.keymap.set("n", "<C-n>", function() ui.nav_file(3) end, { desc = "Harpoon: Go to file 3" })
+    vim.keymap.set("n", "<C-s>", function() ui.nav_file(4) end, { desc = "Harpoon: Go to file 4" })
+    ```
+
+    <Tip>
+      These are the keybindings used by ThePrimeagen (Harpoon's creator), but you can customize them to your preference. Just make sure they don't conflict with your existing keybindings.
+    </Tip>
+  </Step>
+
+  <Step title="Reload your configuration">
+    Save the file and reload your Neovim configuration:
+
+    ```vim
+    :source %
+    ```
+
+    Or restart Neovim.
+  </Step>
+</Steps>
+
+## Your first marks
+
+<Steps>
+  <Step title="Open a file you work with frequently">
+    Navigate to any file in your project that you want to mark. For example:
+
+    ```vim
+    :e src/index.js
+    ```
+  </Step>
+
+  <Step title="Mark the file">
+    With the file open, press `<leader>a` (or whatever keybinding you configured for `mark.add_file`).
+
+    You should see a message: `Mark added`
+
+    This adds the current file to your Harpoon marks at the first available slot.
+  </Step>
+
+  <Step title="Mark additional files">
+    Open 2-3 more files that you work with frequently and mark each one with `<leader>a`.
+
+    For example:
+    ```vim
+    :e src/components/Header.jsx
+    " Press <leader>a
+
+    :e src/utils/helpers.js  
+    " Press <leader>a
+
+    :e tests/integration.test.js
+    " Press <leader>a
+    ```
+
+    Each file gets added to the next available mark slot (1, 2, 3, 4, etc.).
+  </Step>
+</Steps>
+
+## Navigate between marks
+
+<Steps>
+  <Step title="Open the quick menu">
+    Press `<C-e>` to toggle the Harpoon quick menu.
+
+    You'll see a popup window showing all your marked files:
+
+    ```
+    1  src/index.js
+    2  src/components/Header.jsx
+    3  src/utils/helpers.js
+    4  tests/integration.test.js
+    ```
+
+    The currently open file will be highlighted.
+  </Step>
+
+  <Step title="Navigate from the menu">
+    From the quick menu, you can:
+
+    - **Navigate to a file**: Move your cursor to any line and press `Enter`
+    - **Open in vertical split**: Press `<C-v>`
+    - **Open in horizontal split**: Press `<C-x>`  
+    - **Open in new tab**: Press `<C-t>`
+    - **Delete a mark**: Delete the line with `dd`
+    - **Reorder marks**: Cut with `dd` and paste with `p`
+    - **Close the menu**: Press `q` or `<ESC>`
+
+    <Tip>
+      Changes to the menu (reordering, deleting) are saved automatically when you close it.
+    </Tip>
+  </Step>
+
+  <Step title="Navigate with direct keybindings">
+    Close the quick menu and try navigating directly to marks using the keybindings you set up:
+
+    - Press `<C-h>` to jump to mark 1 (src/index.js)
+    - Press `<C-t>` to jump to mark 2 (src/components/Header.jsx)
+    - Press `<C-n>` to jump to mark 3 (src/utils/helpers.js)
+    - Press `<C-s>` to jump to mark 4 (tests/integration.test.js)
+
+    This is the real power of Harpoon: instant navigation to your most important files without thinking.
+  </Step>
+</Steps>
+
+## Cycle through marks
+
+You can also cycle through all your marks sequentially:
+
+```lua
+-- Add these to your keybindings
+vim.keymap.set("n", "<C-S-P>", ui.nav_prev, { desc = "Harpoon: Previous mark" })
+vim.keymap.set("n", "<C-S-N>", ui.nav_next, { desc = "Harpoon: Next mark" })
+```
+
+Now you can:
+- Press `<C-S-N>` to go to the next mark
+- Press `<C-S-P>` to go to the previous mark
+
+The navigation wraps around, so from the last mark, next takes you to the first.
+
+## Common workflows
+
+### Working on a feature
+
+1. Mark the main files you'll be editing:
+   - The feature implementation file
+   - The test file
+   - Related configuration or types
+
+2. Use direct keybindings (`<C-h>`, `<C-t>`, etc.) to jump between them as you work
+
+3. When you're done, open the quick menu (`<C-e>`) and clear marks with `dd` if needed
+
+### Bug fixing
+
+1. Mark the file where the bug is reported
+2. As you trace through the code, mark related files
+3. Use `<C-S-N>` and `<C-S-P>` to cycle through the call stack
+4. Jump back to the main file with the direct keybinding
+
+### Code review
+
+1. Mark files from the pull request that need attention
+2. Navigate through them systematically with direct keybindings
+3. Use the quick menu to see which files you haven't checked yet
+
+<Warning>
+  Marks are saved per project (based on your current working directory). If you change projects, you'll have a different set of marks.
+</Warning>
+
+## What's next?
+
+You now know the core Harpoon workflow! Explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card title="File navigation" icon="file" href="/concepts/marks">
+    Learn advanced mark management and navigation patterns
+  </Card>
+  <Card title="Terminal navigation" icon="terminal" href="/concepts/terminals">
+    Use Harpoon to manage persistent terminals
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/setup">
+    Customize Harpoon's behavior and appearance
+  </Card>
+  <Card title="Telescope integration" icon="magnifying-glass" href="/integrations/telescope">
+    Browse marks with Telescope
+  </Card>
+</CardGroup>

@@ -1,0 +1,474 @@
+---
+title: 'Tmux API'
+description: 'Tmux integration functions for managing tmux windows and panes'
+icon: 'window-restore'
+---
+
+The tmux API provides functions for managing tmux windows and panes through Harpoon. This allows you to control tmux sessions directly from Neovim.
+
+<Note>
+  The `tmux` API manages tmux windows/panes. For Neovim's built-in terminal, see the [Terminal API](/api/term).
+</Note>
+
+## gotoTerminal
+
+Navigate to a tmux window/pane by index or identifier.
+
+```lua
+require("harpoon.tmux").gotoTerminal(idx)
+```
+
+<ParamField path="idx" type="number | string" required>
+  - **number**: Window index (1-based), creates new window if doesn't exist
+  - **string**: Tmux pane identifier (e.g., `"%2"`, `"{right}"`, `"{top-left}"`)
+</ParamField>
+
+### Behavior
+
+- **Numeric index**: Creates or selects a tmux window at that index
+- **String identifier**: Selects a tmux pane using tmux target syntax
+- Creates new tmux window if it doesn't exist
+- Uses `tmux select-window` for windows, `tmux select-pane` for panes
+- Throws error if tmux command fails
+
+### Examples
+
+<CodeGroup>
+```lua Numeric Index
+local tmux = require("harpoon.tmux")
+
+-- Navigate to window 1 (creates if doesn't exist)
+tmux.gotoTerminal(1)
+
+-- Navigate to window 2
+tmux.gotoTerminal(2)
+
+-- Common keymap setup
+vim.keymap.set("n", "<leader>t1", function()
+    tmux.gotoTerminal(1)
+end, { desc = "Go to tmux window 1" })
+
+vim.keymap.set("n", "<leader>t2", function()
+    tmux.gotoTerminal(2)
+end, { desc = "Go to tmux window 2" })
+```
+
+```lua Pane Identifiers
+local tmux = require("harpoon.tmux")
+
+-- Navigate to specific pane by ID
+tmux.gotoTerminal("%2")  -- Pane ID 2
+
+-- Navigate using directional identifiers
+tmux.gotoTerminal("{right}")       -- Right pane
+tmux.gotoTerminal("{left}")        -- Left pane
+tmux.gotoTerminal("{top}")         -- Top pane
+tmux.gotoTerminal("{bottom}")      -- Bottom pane
+tmux.gotoTerminal("{top-left}")    -- Top-left pane
+
+-- Navigate to last pane
+tmux.gotoTerminal("{last}")
+```
+
+```lua Advanced Targeting
+local tmux = require("harpoon.tmux")
+
+-- Target panes in specific sessions/windows
+tmux.gotoTerminal("mysession:1.2")  -- Session:Window.Pane
+tmux.gotoTerminal("mywindow.1")     -- Window.Pane
+
+-- Target by pane title
+tmux.gotoTerminal("=dev-server")    -- Pane with title "dev-server"
+```
+</CodeGroup>
+
+### Tmux Target Syntax
+
+When using string identifiers, Harpoon passes them directly to tmux. Valid formats:
+
+<CardGroup cols={2}>
+  <Card title="Pane ID" icon="hashtag">
+    `%2`, `%5` - Direct pane identifiers
+  </Card>
+  <Card title="Directional" icon="compass">
+    `{left}`, `{right}`, `{top}`, `{bottom}`
+  </Card>
+  <Card title="Positional" icon="grid">
+    `{top-left}`, `{top-right}`, `{bottom-left}`, `{bottom-right}`
+  </Card>
+  <Card title="Special" icon="star">
+    `{last}`, `{next}`, `{previous}`
+  </Card>
+</CardGroup>
+
+---
+
+## sendCommand
+
+Send a command to a tmux window/pane.
+
+```lua
+require("harpoon.tmux").sendCommand(idx, cmd, ...)
+```
+
+<ParamField path="idx" type="number | string" required>
+  - **number**: Window index (creates if doesn't exist)
+  - **string**: Tmux pane identifier
+</ParamField>
+
+<ParamField path="cmd" type="string | number" required>
+  Command string to send, or command index from config
+</ParamField>
+
+<ParamField path="..." type="any" optional>
+  Format arguments for string.format() if cmd contains format specifiers
+</ParamField>
+
+### Behavior
+
+- Sends command using `tmux send-keys`
+- Creates tmux window if using numeric index and doesn't exist
+- Appends newline if `enter_on_sendcmd` is enabled in config
+- If `cmd` is a number, retrieves command from `harpoon.setup({ ... term = { cmds = {...} } })`
+- Supports `string.format()` style arguments
+- Throws error if tmux command fails
+
+### Examples
+
+<CodeGroup>
+```lua Basic Usage
+local tmux = require("harpoon.tmux")
+
+-- Send command to window 1
+tmux.sendCommand(1, "npm run dev")
+
+-- Send to window 2
+tmux.sendCommand(2, "git status")
+
+-- Send to specific pane
+tmux.sendCommand("%2", "ls -la")
+tmux.sendCommand("{right}", "npm test")
+```
+
+```lua With Config Commands
+-- In your Harpoon setup
+require("harpoon").setup({
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test",
+            "docker-compose up",
+        }
+    }
+})
+
+local tmux = require("harpoon.tmux")
+
+-- Send command by index from config
+tmux.sendCommand(1, 1)  -- Sends "npm run dev" to window 1
+tmux.sendCommand(2, 2)  -- Sends "npm test" to window 2
+
+-- Send to specific pane using config command
+tmux.sendCommand("{right}", 3)  -- Sends "docker-compose up" to right pane
+```
+
+```lua With Format Arguments
+local tmux = require("harpoon.tmux")
+
+-- Use string.format() style arguments
+tmux.sendCommand(1, "echo 'Processing %s'", "file.txt")
+tmux.sendCommand(1, "curl -X %s %s", "GET", "https://api.example.com")
+
+-- Git commits
+tmux.sendCommand("{right}", "git commit -m '%s: %s'", "feat", "add feature")
+
+-- Docker commands
+tmux.sendCommand(2, "docker exec -it %s bash", "container_name")
+```
+
+```lua Complex Workflows
+local tmux = require("harpoon.tmux")
+
+-- Set up development environment
+tmux.sendCommand(1, "cd ~/projects/myapp && npm run dev")
+tmux.sendCommand(2, "cd ~/projects/myapp && npm test -- --watch")
+tmux.sendCommand("{right}", "htop")
+
+-- Run build pipeline
+tmux.sendCommand(1, "npm run build")
+tmux.sendCommand(1, "npm run deploy")
+```
+</CodeGroup>
+
+---
+
+## clear_all
+
+Close and delete all Harpoon-managed tmux windows.
+
+```lua
+require("harpoon.tmux").clear_all()
+```
+
+### Behavior
+
+- Closes all tmux windows created by Harpoon (numeric indices)
+- Uses `tmux kill-window` for each tracked window
+- Does not affect manually created tmux windows
+- Does not affect panes referenced by string identifiers
+- Clears internal window registry
+- Window indices can be reused after clearing
+
+<Warning>
+  This only clears windows created through numeric indices, not panes accessed via string identifiers.
+</Warning>
+
+### Example
+
+```lua
+local tmux = require("harpoon.tmux")
+
+-- Clean up all Harpoon tmux windows
+tmux.clear_all()
+
+-- Useful in cleanup keymaps
+vim.keymap.set("n", "<leader>tc", function()
+    require("harpoon.tmux").clear_all()
+end, { desc = "Clear all Harpoon tmux windows" })
+```
+
+---
+
+## Auto-close Configuration
+
+You can configure Harpoon to automatically close tmux windows when exiting Neovim:
+
+```lua
+require("harpoon").setup({
+    tmux_autoclose_windows = true,  -- Auto-close on VimLeave
+})
+```
+
+<ParamField path="tmux_autoclose_windows" type="boolean" default="false">
+  Automatically call `clear_all()` when exiting Neovim
+</ParamField>
+
+When enabled, Harpoon registers a `VimLeave` autocmd that calls `clear_all()` automatically.
+
+---
+
+## Configuration
+
+The tmux API respects these configuration options:
+
+<CodeGroup>
+```lua Configuration
+require("harpoon").setup({
+    -- Global settings
+    enter_on_sendcmd = true,        -- Auto-append newline to commands
+    save_on_change = true,          -- Auto-save terminal commands
+    tmux_autoclose_windows = true,  -- Auto-close windows on exit
+
+    -- Terminal/tmux command presets
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test",
+            "docker-compose up",
+            "git status",
+        }
+    }
+})
+```
+</CodeGroup>
+
+### Config Options
+
+<ParamField path="enter_on_sendcmd" type="boolean" default="false">
+  Automatically append `\n` to commands sent via `sendCommand()`
+</ParamField>
+
+<ParamField path="save_on_change" type="boolean" default="false">
+  Automatically save terminal command list when modified
+</ParamField>
+
+<ParamField path="tmux_autoclose_windows" type="boolean" default="false">
+  Automatically close Harpoon-created tmux windows on VimLeave
+</ParamField>
+
+<ParamField path="term.cmds" type="string[]" default="[]">
+  List of preset commands accessible by index in `sendCommand()`
+</ParamField>
+
+---
+
+## Complete Workflow Examples
+
+<CodeGroup>
+```lua Development Setup
+-- In your Neovim config
+require("harpoon").setup({
+    enter_on_sendcmd = true,
+    tmux_autoclose_windows = true,
+    term = {
+        cmds = {
+            "npm run dev",
+            "npm test -- --watch",
+            "docker-compose up",
+        }
+    }
+})
+
+local tmux = require("harpoon.tmux")
+
+-- Window navigation
+vim.keymap.set("n", "<leader>t1", function()
+    tmux.gotoTerminal(1)
+end, { desc = "Go to tmux window 1" })
+
+vim.keymap.set("n", "<leader>t2", function()
+    tmux.gotoTerminal(2)
+end, { desc = "Go to tmux window 2" })
+
+-- Pane navigation
+vim.keymap.set("n", "<C-h>", function()
+    tmux.gotoTerminal("{left}")
+end, { desc = "Go to left pane" })
+
+vim.keymap.set("n", "<C-l>", function()
+    tmux.gotoTerminal("{right}")
+end, { desc = "Go to right pane" })
+
+-- Send preset commands
+vim.keymap.set("n", "<leader>td", function()
+    tmux.sendCommand(1, 1)  -- Start dev server
+end, { desc = "Start dev server" })
+
+vim.keymap.set("n", "<leader>tt", function()
+    tmux.sendCommand(2, 2)  -- Run tests
+end, { desc = "Run tests" })
+
+-- Send custom commands
+vim.keymap.set("n", "<leader>ts", function()
+    local cmd = vim.fn.input("Command: ")
+    tmux.sendCommand(1, cmd)
+end, { desc = "Send command to window 1" })
+```
+
+```lua Multi-pane Workflow
+local tmux = require("harpoon.tmux")
+
+-- Set up a 3-pane development environment
+-- Assuming tmux layout: [editor | right-pane-top]
+--                       [        | right-pane-bottom]
+
+-- Send commands to different panes
+tmux.sendCommand("{right-top}", "npm run dev")
+tmux.sendCommand("{right-bottom}", "npm test -- --watch")
+
+-- Navigate between panes
+tmux.gotoTerminal("{right-top}")     -- Check dev server
+tmux.gotoTerminal("{right-bottom}")  -- Check tests
+
+-- Send commands to current layout
+tmux.sendCommand("{right}", "git status")  -- Right pane (whichever is current)
+tmux.sendCommand("{last}", "clear")        -- Last active pane
+```
+
+```lua Session Management
+local tmux = require("harpoon.tmux")
+
+-- Target specific session/window combinations
+tmux.sendCommand("dev:1", "npm run dev")      -- Session 'dev', window 1
+tmux.sendCommand("dev:2", "npm test")         -- Session 'dev', window 2
+tmux.sendCommand("monitoring:1", "htop")     -- Session 'monitoring'
+
+-- Navigate across sessions
+tmux.gotoTerminal("dev:1.2")        -- Session 'dev', window 1, pane 2
+tmux.gotoTerminal("monitoring:1")   -- Session 'monitoring', window 1
+```
+</CodeGroup>
+
+---
+
+## Tmux Pane Identifiers Reference
+
+Complete reference of valid pane identifiers for string-based targeting:
+
+### Direct Identifiers
+
+| Pattern | Description | Example |
+|---------|-------------|--------|
+| `%<id>` | Pane ID | `%2`, `%5` |
+| `{start}` | Start of range | `{start}..{end}` |
+| `{end}` | End of range | `{start}..{end}` |
+| `{last}` | Last active pane | `{last}` |
+| `{next}` | Next pane | `{next}` |
+| `{previous}` | Previous pane | `{previous}` |
+
+### Directional
+
+| Pattern | Description |
+|---------|-------------|
+| `{left}` | Pane to the left |
+| `{right}` | Pane to the right |
+| `{up}` | Pane above |
+| `{down}` | Pane below |
+| `{top}` | Top pane |
+| `{bottom}` | Bottom pane |
+
+### Positional
+
+| Pattern | Description |
+|---------|-------------|
+| `{top-left}` | Top-left pane |
+| `{top-right}` | Top-right pane |
+| `{bottom-left}` | Bottom-left pane |
+| `{bottom-right}` | Bottom-right pane |
+
+### Session/Window Targeting
+
+| Pattern | Description | Example |
+|---------|-------------|--------|
+| `<session>:<window>` | Specific session and window | `dev:1` |
+| `<session>:<window>.<pane>` | Session, window, and pane | `dev:1.2` |
+| `<window>.<pane>` | Window and pane in current session | `mywindow.1` |
+| `=<title>` | Pane with specific title | `=dev-server` |
+
+---
+
+## Internal Functions
+
+These functions are available but typically not needed for normal usage:
+
+### get_length
+
+Get the number of configured terminal commands.
+
+```lua
+local count = require("harpoon.tmux").get_length()
+```
+
+### valid_index
+
+Check if a terminal index is valid.
+
+```lua
+local is_valid = require("harpoon.tmux").valid_index(idx)
+```
+
+### add_cmd
+
+Add a command to the terminal command list.
+
+```lua
+require("harpoon.tmux").add_cmd("npm run build")
+```
+
+### rm_cmd
+
+Remove a command from the terminal command list by index.
+
+```lua
+require("harpoon.tmux").rm_cmd(2)  -- Remove second command
+```

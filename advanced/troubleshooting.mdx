@@ -1,0 +1,408 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for Harpoon
+---
+
+This guide covers common problems you might encounter while using Harpoon and how to resolve them.
+
+## Quick Diagnostics
+
+Before diving into specific issues, run these quick checks:
+
+```lua
+-- Check Harpoon version and config
+:lua require("harpoon").print_config()
+
+-- Check current marks
+:lua require("harpoon.ui").toggle_quick_menu()
+
+-- Check cache location
+:echo stdpath("cache")
+
+-- Check data location  
+:echo stdpath("data")
+```
+
+## Common Issues
+
+<Accordion title="Marks not saving between sessions">
+### Symptoms
+- Marks disappear when you close and reopen Neovim
+- Config file not being written
+
+### Solutions
+
+**Check save_on_change setting:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        save_on_change = true,  -- Should be true (default)
+    }
+})
+```
+
+**Verify file permissions:**
+```bash
+# Check if cache directory is writable
+ls -la $(nvim --headless -c 'echo stdpath("data")' -c 'quit' 2>&1)
+```
+
+**Check the config file exists:**
+```vim
+:!ls -la $(nvim --headless -c 'echo stdpath("data") . "/harpoon.json"' -c 'quit' 2>&1)
+```
+
+**Enable debug logging:**
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Then check `~/.cache/nvim/harpoon.log` for save-related errors.
+
+**Manual save:**
+If auto-save isn't working, manually save after adding marks:
+```lua
+:lua require("harpoon").save()
+```
+</Accordion>
+
+<Accordion title="File paths not resolving correctly">
+### Symptoms
+- Marks point to wrong files
+- "File not found" errors when navigating
+- Marks break after changing directories
+
+### Solutions
+
+**Understand path normalization:**
+
+Harpoon stores paths relative to the project root (current working directory). If you change directories, marks may not resolve correctly.
+
+```lua
+-- Check your current working directory
+:pwd
+
+-- Marks are stored relative to this directory
+:lua print(require("harpoon.utils").project_key())
+```
+
+**Use consistent working directories:**
+
+Always start Neovim from your project root:
+```bash
+# Good
+cd ~/my-project
+nvim
+
+# Problematic - working directory is ~
+cd ~
+nvim my-project/file.lua
+```
+
+**For git projects with branch-specific marks:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        mark_branch = true,  -- Separate marks per git branch
+    }
+})
+```
+
+<Warning>
+With `mark_branch = true`, switching git branches will switch to that branch's marks. This is useful for feature branch workflows but can be confusing if unexpected.
+</Warning>
+
+**Check symbolic links:**
+
+Symbolic links can cause path resolution issues. Harpoon normalizes paths, but symlinks may not resolve as expected. Use absolute paths or avoid symlinks in your project structure.
+</Accordion>
+
+<Accordion title="Marks not updating position">
+### Symptoms
+- Cursor position not saved
+- Always jumps to top of file
+- Position gets reset
+
+### Solutions
+
+**Verify autocmds are working:**
+
+Harpoon saves cursor position on `BufLeave` and `VimLeave`. Check these are firing:
+```vim
+:autocmd BufLeave
+```
+
+You should see Harpoon's autocmd group `THE_PRIMEAGEN_HARPOON`.
+
+**Manual position update:**
+```lua
+:lua require("harpoon.mark").store_offset()
+```
+
+**Check for conflicts:**
+
+Other plugins managing cursor position (like vim-lastplace) might conflict. Try disabling them temporarily.
+
+**Enable debug logging:**
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Check logs for `store_offset()` calls and any errors.
+</Accordion>
+
+<Accordion title="Quick menu not opening or behaving incorrectly">
+### Symptoms
+- Menu doesn't appear
+- Menu is the wrong size
+- Cannot edit marks in menu
+
+### Solutions
+
+**Check for keybind conflicts:**
+```vim
+:nmap <your-keybind>
+```
+
+**Verify the function is called:**
+```lua
+:lua require("harpoon.ui").toggle_quick_menu()
+```
+
+**Customize menu width:**
+
+If the menu is too narrow:
+```lua
+require("harpoon").setup({
+    menu = {
+        width = vim.api.nvim_win_get_width(0) - 4,
+    }
+})
+```
+
+**Menu keybindings:**
+
+From the quick menu:
+- `q` or `<ESC>` - Close and save
+- `<CR>` - Open file
+- `<C-v>` - Open in vertical split
+- `<C-x>` - Open in horizontal split  
+- `<C-t>` - Open in new tab
+- `dd` - Delete mark (in normal mode)
+</Accordion>
+
+<Accordion title="Conflicts with other plugins">
+### Common Plugin Conflicts
+
+**Bufferline / Tabline plugins:**
+
+If using Harpoon's tabline feature:
+```lua
+-- Disable other tabline plugins or disable Harpoon's tabline
+require("harpoon").setup({
+    global_settings = {
+        tabline = false,  -- Let other plugin handle tabline
+    }
+})
+```
+
+**Telescope:**
+
+If Telescope integration isn't working:
+```lua
+-- Load extension after both plugins are loaded
+require("telescope").load_extension('harpoon')
+
+-- Then use:
+:Telescope harpoon marks
+```
+
+**Session managers:**
+
+Session plugins might restore buffers that conflict with Harpoon marks. Load Harpoon after your session manager.
+
+**File tree plugins (NvimTree, neo-tree):**
+
+Ensure file trees are in the `excluded_filetypes`:
+```lua
+require("harpoon").setup({
+    global_settings = {
+        excluded_filetypes = { "harpoon", "NvimTree", "neo-tree" },
+    }
+})
+```
+</Accordion>
+
+<Accordion title="Performance issues with many marks">
+### Symptoms
+- Slow navigation
+- Lag when adding/removing marks
+- High memory usage
+
+### Solutions
+
+**Reduce mark count:**
+
+Harpoon is designed for a small set of frequently accessed files (typically 4-10). If you have dozens of marks, consider using other tools like buffers, tabs, or a fuzzy finder.
+
+**Optimize save behavior:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        save_on_toggle = false,  -- Only save on change, not on toggle
+        save_on_change = true,   -- Keep this true for persistence
+    }
+})
+```
+
+**Disable tabline if not needed:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        tabline = false,
+    }
+})
+```
+
+**Profile with logging:**
+```lua
+vim.g.harpoon_log_level = "info"
+```
+
+Monitor the log for excessive operations.
+</Accordion>
+
+<Accordion title="Terminal/tmux integration issues">
+### Symptoms
+- Cannot navigate to terminal
+- Commands not sending to tmux
+- Terminal windows not created
+
+### Solutions
+
+**Verify terminal index:**
+```lua
+-- Terminals are 1-indexed
+:lua require("harpoon.term").gotoTerminal(1)
+```
+
+**Check tmux is running:**
+```bash
+tmux ls
+```
+
+**Verify tmux commands:**
+```lua
+-- Test sending a command
+:lua require("harpoon.tmux").sendCommand(1, "echo test")
+```
+
+**Configure execute on send:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        enter_on_sendcmd = true,  -- Auto-execute commands
+    }
+})
+```
+
+**Tmux window cleanup:**
+```lua
+require("harpoon").setup({
+    global_settings = {
+        tmux_autoclose_windows = true,  -- Close tmux windows on exit
+    }
+})
+```
+</Accordion>
+
+## Getting Help
+
+### Enable Debug Logging
+
+For any issue, start by enabling debug logging:
+
+```lua
+vim.g.harpoon_log_level = "debug"
+```
+
+Check the log file at `~/.cache/nvim/harpoon.log` for detailed information.
+
+### Provide Information
+
+When reporting issues, include:
+
+1. **Neovim version**: `:version`
+2. **Harpoon configuration**: `:lua require("harpoon").print_config()`
+3. **Relevant logs**: From `~/.cache/nvim/harpoon.log`
+4. **Steps to reproduce**: Exact steps that cause the issue
+5. **Expected vs actual behavior**: What should happen vs what does happen
+
+### Community Support
+
+Join the **#harpoon** channel on [ThePrimeagen's Discord](https://discord.gg/theprimeagen) for community support and discussions.
+
+## Advanced Debugging
+
+### Inspect Current Configuration
+
+```lua
+:lua require("harpoon").print_config()
+```
+
+### Check Mark Data Structure
+
+```lua
+:lua print(vim.inspect(require("harpoon").get_mark_config()))
+```
+
+### Manual Config File Inspection
+
+```bash
+# View the raw config
+cat ~/.local/share/nvim/harpoon.json | jq .
+```
+
+### Reset Harpoon Completely
+
+<Warning>
+This will delete all your marks permanently.
+</Warning>
+
+```bash
+# Backup first
+cp ~/.local/share/nvim/harpoon.json ~/.local/share/nvim/harpoon.json.backup
+
+# Delete config
+rm ~/.local/share/nvim/harpoon.json
+rm ~/.cache/nvim/harpoon.log
+
+# Restart Neovim
+```
+
+### Test in Minimal Config
+
+Create a minimal `test.lua` to isolate issues:
+
+```lua
+-- test.lua
+vim.opt.runtimepath:append("~/.local/share/nvim/site/pack/packer/start/plenary.nvim")
+vim.opt.runtimepath:append("~/.local/share/nvim/site/pack/packer/start/harpoon")
+
+vim.g.harpoon_log_level = "debug"
+
+require("harpoon").setup({
+    global_settings = {
+        save_on_change = true,
+    }
+})
+
+-- Add test keybinds
+vim.keymap.set("n", "<leader>a", function() require("harpoon.mark").add_file() end)
+vim.keymap.set("n", "<leader>e", function() require("harpoon.ui").toggle_quick_menu() end)
+```
+
+Run with:
+```bash
+nvim -u test.lua
+```

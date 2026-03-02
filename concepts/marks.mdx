@@ -1,0 +1,203 @@
+---
+title: Marks
+description: Understanding Harpoon's file marking system
+---
+
+Harpoon's marking system provides a fast, index-based approach to navigate between your most important files. Unlike Vim's global marks, Harpoon marks are project-specific and automatically track cursor positions.
+
+## How marks work
+
+Marks in Harpoon function differently from traditional Vim marks in several key ways:
+
+<AccordionGroup>
+  <Accordion title="Per-project persistence">
+    Marks are automatically saved per project (or per branch if configured). Each project maintains its own independent list of marked files.
+
+    ```lua
+    -- Configuration stored at vim.fn.stdpath("data")/harpoon.json
+    {
+      "projects": {
+        "/path/to/project": {
+          "mark": {
+            "marks": [
+              {
+                "filename": "src/main.lua",
+                "row": 42,
+                "col": 8
+              }
+            ]
+          }
+        }
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Cursor position tracking">
+    Each mark stores both the file path and the exact cursor position (row and column) where you left off.
+
+    ```lua
+    -- From mark.lua:84-97
+    local function create_mark(filename)
+        local cursor_pos = vim.api.nvim_win_get_cursor(0)
+        return {
+            filename = filename,
+            row = cursor_pos[1],
+            col = cursor_pos[2],
+        }
+    end
+    ```
+
+    When you navigate to a mark, Harpoon automatically restores your cursor to the saved position.
+  </Accordion>
+
+  <Accordion title="Index-based navigation">
+    Unlike Vim's named marks (mA, mB, etc.), Harpoon uses numeric indices. This allows for lightning-fast keyboard shortcuts to jump between files.
+  </Accordion>
+</AccordionGroup>
+
+## Adding and removing marks
+
+### Add a file to marks
+
+The `add_file()` function marks the current buffer at the first available slot:
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Mark the current file
+mark.add_file()
+```
+
+<Note>
+  If a file is already marked, calling `add_file()` again won't create a duplicate or change its position in the list.
+</Note>
+
+### Toggle a mark
+
+Use `toggle_file()` to add or remove a mark with a single command:
+
+```lua
+-- Toggle mark for current file
+mark.toggle_file()
+
+-- Toggle mark for a specific file
+mark.toggle_file("/path/to/file.lua")
+```
+
+### Remove a mark
+
+```lua
+-- Remove mark for current file
+mark.rm_file()
+
+-- Remove mark by index
+mark.rm_file(2)
+
+-- Clear all marks in the project
+mark.clear_all()
+```
+
+## Mark indices and navigation
+
+Harpoon uses 1-based indexing for marks. The first file you mark is at index 1, the second at index 2, and so on.
+
+### Get mark information
+
+```lua
+-- Get the current file's mark index
+local current_idx = mark.get_current_index()
+if current_idx then
+    print("This file is mark #" .. current_idx)
+end
+
+-- Get mark by index
+local mark_data = mark.get_marked_file(1)
+if mark_data then
+    print(mark_data.filename)  -- File path
+    print(mark_data.row)       -- Row number
+    print(mark_data.col)       -- Column number
+end
+
+-- Get just the filename
+local filename = mark.get_marked_file_name(3)
+
+-- Get total number of marks
+local count = mark.get_length()
+```
+
+### Check if an index is valid
+
+```lua
+-- Validate before navigating
+if mark.valid_index(5) then
+    -- Safe to navigate to mark 5
+end
+```
+
+<Warning>
+  Attempting to navigate to an invalid index won't cause an error, but nothing will happen.
+</Warning>
+
+## Cursor position updates
+
+Harpoon automatically updates cursor positions when you leave a marked buffer:
+
+```lua
+-- From mark.lua:255-282
+function M.store_offset()
+    local marks = harpoon.get_mark_config().marks
+    local buf_name = get_buf_name()
+    local idx = M.get_index_of(buf_name, marks)
+    
+    if not M.valid_index(idx, marks) then
+        return
+    end
+    
+    local cursor_pos = vim.api.nvim_win_get_cursor(0)
+    marks[idx].row = cursor_pos[1]
+    marks[idx].col = cursor_pos[2]
+end
+```
+
+This happens automatically via autocmd when you:
+- Leave a buffer (BufLeave)
+- Exit Vim (VimLeave)
+
+<Tip>
+  Enable `save_on_change` in your configuration to automatically persist marks to disk whenever they change.
+</Tip>
+
+## Setting marks at specific positions
+
+You can force a file to occupy a specific index:
+
+```lua
+-- Put current file at index 3
+mark.set_current_at(3)
+```
+
+If another file was already at index 3, it will be removed. This is useful for maintaining a consistent layout across sessions.
+
+## Mark status in statusline
+
+Display the current buffer's mark index in your statusline:
+
+```lua
+-- Returns "M1", "M2", etc. or "" if not marked
+local status = mark.status()
+```
+
+## Quickfix integration
+
+Send all marks to the quickfix list for browsing:
+
+```lua
+-- Populate quickfix with all marks
+mark.to_quickfix_list()
+
+-- Then use :copen to view
+vim.cmd("copen")
+```
+
+Each quickfix entry includes the filename, row, and column of the mark.

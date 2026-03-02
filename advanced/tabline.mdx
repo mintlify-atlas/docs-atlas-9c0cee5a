@@ -1,0 +1,150 @@
+---
+title: Tabline Configuration
+description: Configure and customize the Harpoon tabline to display your marks
+---
+
+The tabline feature displays your Harpoon marks in the Neovim tabline, giving you a visual overview of all your marked files at the top of your editor.
+
+## Enabling the Tabline
+
+To enable the tabline, set the `tabline` option to `true` in your Harpoon setup:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        tabline = true,
+    }
+})
+```
+
+When enabled, Harpoon will:
+- Set `showtabline` to `2` (always show)
+- Display all your marked files with their index numbers
+- Highlight the currently active mark
+- Update automatically when marks change
+
+## Customizing the Display
+
+### Prefix and Suffix
+
+You can customize the spacing around each mark using `tabline_prefix` and `tabline_suffix`:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        tabline = true,
+        tabline_prefix = "   ",  -- Default: three spaces
+        tabline_suffix = "   ",  -- Default: three spaces
+    }
+})
+```
+
+These settings control the whitespace before and after each mark in the tabline.
+
+## Highlight Groups
+
+The tabline uses four highlight groups that you can customize to match your theme:
+
+| Highlight Group | Purpose |
+|----------------|----------|
+| `HarpoonActive` | The filename text of the currently active mark |
+| `HarpoonInactive` | The filename text of inactive marks |
+| `HarpoonNumberActive` | The index number of the currently active mark |
+| `HarpoonNumberInactive` | The index numbers of inactive marks |
+
+### Default Behavior
+
+By default, if you haven't customized these highlight groups, Harpoon will link them to your theme's standard tabline highlights:
+
+- `HarpoonInactive` → `Tabline`
+- `HarpoonActive` → `TablineSel`
+- `HarpoonNumberActive` → `TablineSel`
+- `HarpoonNumberInactive` → `Tabline`
+
+<Note>
+The highlight groups are automatically updated when you change your colorscheme, ensuring the tabline always integrates with your theme.
+</Note>
+
+### Custom Styling
+
+Here's an example of creating a clean, minimal tabline appearance:
+
+```lua
+vim.cmd('highlight! HarpoonInactive guibg=NONE guifg=#63698c')
+vim.cmd('highlight! HarpoonActive guibg=NONE guifg=white')
+vim.cmd('highlight! HarpoonNumberActive guibg=NONE guifg=#7aa2f7')
+vim.cmd('highlight! HarpoonNumberInactive guibg=NONE guifg=#7aa2f7')
+vim.cmd('highlight! TabLineFill guibg=NONE guifg=white')
+```
+
+This configuration:
+- Removes backgrounds for a transparent look
+- Uses muted colors for inactive marks
+- Makes active marks stand out in white
+- Colors all numbers in blue (`#7aa2f7`)
+
+<Note>
+Place highlight commands **after** your colorscheme is loaded to prevent them from being overridden.
+</Note>
+
+## How It Works
+
+The tabline implementation:
+
+1. **Shortens filenames**: If multiple marks have unique basenames, only the basename is shown. If there are conflicts, the full relative path is displayed.
+2. **Shows mark indices**: Each mark is prefixed with its index number (1, 2, 3, etc.).
+3. **Highlights active mark**: The currently open file's mark is highlighted differently.
+4. **Auto-updates**: The tabline refreshes automatically when marks change.
+
+<CodeGroup>
+```lua Tabline with custom spacing
+require("harpoon").setup({
+    global_settings = {
+        tabline = true,
+        tabline_prefix = " | ",
+        tabline_suffix = " | ",
+    }
+})
+```
+
+```lua Tabline with minimal spacing
+require("harpoon").setup({
+    global_settings = {
+        tabline = true,
+        tabline_prefix = " ",
+        tabline_suffix = " ",
+    }
+})
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<Warning>
+If you're using another plugin that modifies the tabline (like bufferline.nvim), there may be conflicts. Harpoon's tabline feature sets `vim.o.tabline` directly, which will override other tabline configurations.
+</Warning>
+
+### Tabline Not Appearing
+
+If the tabline isn't showing:
+
+1. Verify `tabline = true` is in your configuration
+2. Check that you don't have another plugin overriding the tabline
+3. Ensure you have at least one mark added
+
+### Highlights Not Working
+
+If custom highlights aren't appearing:
+
+1. Make sure highlight commands run **after** your colorscheme loads
+2. Use an autocommand to reapply highlights when changing colorschemes:
+
+```lua
+vim.api.nvim_create_autocmd("ColorScheme", {
+    pattern = "*",
+    callback = function()
+        vim.cmd('highlight! HarpoonActive guifg=white')
+        -- Add other highlight commands
+    end,
+})
+```

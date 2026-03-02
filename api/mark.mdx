@@ -1,0 +1,355 @@
+---
+title: 'Mark API'
+description: 'File mark management functions for navigating between important files'
+icon: 'bookmark'
+---
+
+The mark API provides functions for managing file marks in Harpoon. Marks are bookmarks to specific files with saved cursor positions.
+
+## add_file
+
+Add a file to the mark list.
+
+```lua
+require("harpoon.mark").add_file(file_name_or_buf_id)
+```
+
+<ParamField path="file_name_or_buf_id" type="string | number | nil" optional>
+  File path (string), buffer ID (number), or nil for current buffer
+</ParamField>
+
+### Behavior
+
+- If the file is already marked, does nothing (preserves existing position)
+- Adds the mark to the first empty slot in the list
+- Saves current cursor position with the mark
+- Throws error if filetype is in `excluded_filetypes` config
+- Throws error if trying to mark the Harpoon UI itself
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Add current buffer
+mark.add_file()
+
+-- Add specific file by path
+mark.add_file("/path/to/file.lua")
+
+-- Add by buffer ID
+mark.add_file(5)
+```
+
+---
+
+## rm_file
+
+Remove a file from the mark list.
+
+```lua
+require("harpoon.mark").rm_file(file_name_or_buf_id)
+```
+
+<ParamField path="file_name_or_buf_id" type="string | number | nil" optional>
+  File path (string), buffer ID (number), or nil for current buffer
+</ParamField>
+
+### Behavior
+
+- Removes the mark if it exists
+- Does nothing if the file is not marked
+- Removes empty tail entries from the mark list
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Remove current buffer
+mark.rm_file()
+
+-- Remove specific file
+mark.rm_file("/path/to/file.lua")
+```
+
+---
+
+## toggle_file
+
+Toggle a file in the mark list (add if not present, remove if present).
+
+```lua
+require("harpoon.mark").toggle_file(file_name_or_buf_id)
+```
+
+<ParamField path="file_name_or_buf_id" type="string | number | nil" optional>
+  File path (string), buffer ID (number), or nil for current buffer
+</ParamField>
+
+### Behavior
+
+- Adds the file if not marked
+- Removes the file if already marked
+- Prints "Mark added" or "Mark removed" message
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Toggle current buffer
+mark.toggle_file()
+
+-- Toggle specific file
+mark.toggle_file("/path/to/file.lua")
+```
+
+---
+
+## clear_all
+
+Remove all marks from the list.
+
+```lua
+require("harpoon.mark").clear_all()
+```
+
+### Behavior
+
+- Clears all marks immediately
+- Triggers save if `save_on_change` is enabled
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Clear all marks
+mark.clear_all()
+```
+
+---
+
+## get_marked_file
+
+Get the mark object at a specific index or by filename.
+
+```lua
+require("harpoon.mark").get_marked_file(idxOrName)
+```
+
+<ParamField path="idxOrName" type="number | string" required>
+  Mark index (number) or filename (string)
+</ParamField>
+
+<ResponseField name="return" type="table | nil">
+  Mark object with fields:
+  - `filename` (string): File path
+  - `row` (number): Cursor row position
+  - `col` (number): Cursor column position
+</ResponseField>
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Get mark by index
+local m1 = mark.get_marked_file(1)
+print(m1.filename, m1.row, m1.col)
+
+-- Get mark by filename
+local m2 = mark.get_marked_file("/path/to/file.lua")
+```
+
+---
+
+## get_marked_file_name
+
+Get the filename of a mark at a specific index.
+
+```lua
+require("harpoon.mark").get_marked_file_name(idx)
+```
+
+<ParamField path="idx" type="number" required>
+  Mark index (1-based)
+</ParamField>
+
+<ResponseField name="return" type="string | nil">
+  Filename at the index, or nil if no mark exists
+</ResponseField>
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Get filename at index 1
+local filename = mark.get_marked_file_name(1)
+print(filename)
+```
+
+---
+
+## get_current_index
+
+Get the mark index of the current buffer.
+
+```lua
+require("harpoon.mark").get_current_index()
+```
+
+<ResponseField name="return" type="number | nil">
+  Index of current buffer in mark list, or nil if not marked
+</ResponseField>
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+local idx = mark.get_current_index()
+if idx then
+    print("Current file is mark #" .. idx)
+else
+    print("Current file is not marked")
+end
+```
+
+---
+
+## set_current_at
+
+Set the current buffer as a mark at a specific index.
+
+```lua
+require("harpoon.mark").set_current_at(idx)
+```
+
+<ParamField path="idx" type="number" required>
+  Target index for the mark (1-based)
+</ParamField>
+
+### Behavior
+
+- Removes the current file from its existing position (if marked)
+- Places the current file at the specified index
+- Fills any gaps with empty marks
+- Saves current cursor position
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Set current file as mark #3
+mark.set_current_at(3)
+```
+
+---
+
+## to_quickfix_list
+
+Populate Vim's quickfix list with all marks.
+
+```lua
+require("harpoon.mark").to_quickfix_list()
+```
+
+### Behavior
+
+- Creates quickfix entries for all non-empty marks
+- Each entry includes filename, row, and column position
+- Opens the quickfix list for easy navigation
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- Send all marks to quickfix
+mark.to_quickfix_list()
+
+-- Navigate with :cnext and :cprev
+```
+
+---
+
+## status
+
+Get the mark status string for a buffer (useful for statusline).
+
+```lua
+require("harpoon.mark").status(bufnr)
+```
+
+<ParamField path="bufnr" type="number" optional>
+  Buffer number to check (defaults to current buffer)
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Returns "M1", "M2", etc. if marked, or empty string if not marked
+</ResponseField>
+
+### Example
+
+```lua
+local mark = require("harpoon.mark")
+
+-- In statusline configuration
+local status = mark.status()
+if status ~= "" then
+    -- Display status in statusline
+    print("Mark: " .. status)
+end
+```
+
+---
+
+## Additional Functions
+
+### get_index_of
+
+Get the index of a file in the mark list.
+
+```lua
+local idx = require("harpoon.mark").get_index_of(item)
+```
+
+<ParamField path="item" type="string | number" required>
+  Filename (string) or index (number)
+</ParamField>
+
+<ResponseField name="return" type="number | nil">
+  Index if found, nil otherwise
+</ResponseField>
+
+### valid_index
+
+Check if an index is valid and has a mark.
+
+```lua
+local is_valid = require("harpoon.mark").valid_index(idx)
+```
+
+<ParamField path="idx" type="number" required>
+  Index to validate
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if index has a valid mark, false otherwise
+</ResponseField>
+
+### get_length
+
+Get the total number of marks.
+
+```lua
+local count = require("harpoon.mark").get_length()
+```
+
+<ResponseField name="return" type="number">
+  Number of marks in the list
+</ResponseField>

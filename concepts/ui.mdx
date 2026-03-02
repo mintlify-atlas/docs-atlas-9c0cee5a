@@ -1,0 +1,260 @@
+---
+title: Quick menu UI
+description: Understanding the Harpoon quick menu interface
+---
+
+The Harpoon quick menu provides a visual interface for viewing, reordering, and navigating your marked files. It's a floating window that displays all your marks and allows you to manage them interactively.
+
+## Opening the quick menu
+
+Toggle the quick menu with:
+
+```lua
+local ui = require("harpoon.ui")
+
+ui.toggle_quick_menu()
+```
+
+The menu will display all your marked files, with line numbers indicating their indices:
+
+```
+╭─ Harpoon ────────────────────────────────╮
+│  1  src/main.lua                         │
+│  2  lib/utils.lua                        │
+│  3  tests/init.lua                       │
+│  4  (empty)                              │
+╰──────────────────────────────────────────╯
+```
+
+<Note>
+  The currently active file will be highlighted automatically when the menu opens.
+</Note>
+
+## Keyboard shortcuts
+
+The quick menu provides several built-in keyboard shortcuts:
+
+<Tabs>
+  <Tab title="Navigation">
+    ### Enter
+    Navigate to the file under the cursor:
+
+    ```lua
+    -- From ui.lua:160-164
+    function M.select_menu_item()
+        local idx = vim.fn.line(".")
+        close_menu(true)
+        M.nav_file(idx)
+    end
+    ```
+
+    Pressing Enter jumps to the selected file and closes the menu.
+  </Tab>
+
+  <Tab title="Close">
+    ### q or ESC
+    Close the quick menu without navigating:
+
+    ```lua
+    -- Keymaps defined in ui.lua:114-127
+    vim.api.nvim_buf_set_keymap(
+        Harpoon_bufh,
+        "n",
+        "q",
+        "<Cmd>lua require('harpoon.ui').toggle_quick_menu()<CR>",
+        { silent = true }
+    )
+    ```
+
+    Both `q` and `<ESC>` perform the same action.
+  </Tab>
+
+  <Tab title="Splits">
+    ### Ctrl+v (Vertical split)
+    Open the file under the cursor in a vertical split:
+
+    ```lua
+    -- From init.lua:33-38
+    vim.keymap.set("n", "<C-V>", function()
+        local curline = vim.api.nvim_get_current_line()
+        local working_directory = vim.fn.getcwd() .. "/"
+        vim.cmd("vs")
+        vim.cmd("e " .. working_directory .. curline)
+    end, { buffer = true })
+    ```
+
+    ### Ctrl+x (Horizontal split)
+    Open the file in a horizontal split:
+
+    ```lua
+    -- From init.lua:41-46
+    vim.keymap.set("n", "<C-x>", function()
+        local curline = vim.api.nvim_get_current_line()
+        local working_directory = vim.fn.getcwd() .. "/"
+        vim.cmd("sp")
+        vim.cmd("e " .. working_directory .. curline)
+    end, { buffer = true })
+    ```
+
+    ### Ctrl+t (New tab)
+    Open the file in a new tab:
+
+    ```lua
+    -- From init.lua:49-54
+    vim.keymap.set("n", "<C-t>", function()
+        local curline = vim.api.nvim_get_current_line()
+        local working_directory = vim.fn.getcwd() .. "/"
+        vim.cmd("tabnew")
+        vim.cmd("e " .. working_directory .. curline)
+    end, { buffer = true })
+    ```
+  </Tab>
+</Tabs>
+
+## Reordering marks
+
+You can reorder marks by editing the text in the quick menu:
+
+1. Open the quick menu
+2. Enter insert mode (`i` or `a`)
+3. Use Vim motions to move lines around (e.g., `dd` to delete, `p` to paste)
+4. The new order is saved automatically
+
+```lua
+-- From ui.lua:59-70
+local function get_menu_items()
+    local lines = vim.api.nvim_buf_get_lines(Harpoon_bufh, 0, -1, true)
+    local indices = {}
+    
+    for _, line in pairs(lines) do
+        if not utils.is_white_space(line) then
+            table.insert(indices, line)
+        end
+    end
+    
+    return indices
+end
+```
+
+<Tip>
+  Reordering marks in the UI is the easiest way to organize your workflow. Simply rearrange the lines to match your preferred navigation order.
+</Tip>
+
+## Deleting marks from the UI
+
+To remove a mark from the quick menu:
+
+1. Open the quick menu
+2. Navigate to the line you want to remove
+3. Delete the line (`dd` in normal mode)
+4. The mark is removed when the menu updates
+
+Alternatively, you can replace a filename with `(empty)` to clear that slot.
+
+## Auto-save behavior
+
+The quick menu respects your `save_on_toggle` and `save_on_change` configuration:
+
+```lua
+-- From ui.lua:14-20
+local function close_menu(force_save)
+    local global_config = harpoon.get_global_settings()
+    
+    if global_config.save_on_toggle or force_save then
+        require("harpoon.ui").on_menu_save()
+    end
+    
+    vim.api.nvim_win_close(Harpoon_win_id, true)
+end
+```
+
+<AccordionGroup>
+  <Accordion title="save_on_toggle">
+    When enabled, marks are saved to disk whenever you close the quick menu:
+
+    ```lua
+    require("harpoon").setup({
+        global_settings = {
+            save_on_toggle = true,
+        },
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="save_on_change">
+    When enabled, marks are saved immediately as you edit them in the quick menu:
+
+    ```lua
+    -- From ui.lua:141-147
+    if global_config.save_on_change then
+        vim.cmd(
+            string.format(
+                "autocmd TextChanged,TextChangedI <buffer=%s> lua require('harpoon.ui').on_menu_save()",
+                Harpoon_bufh
+            )
+        )
+    end
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Customizing the menu appearance
+
+Customize the menu size and border characters:
+
+```lua
+require("harpoon").setup({
+    menu = {
+        width = 80,
+        height = 15,
+        borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
+    },
+})
+```
+
+<Warning>
+  The menu is implemented as a special buffer with filetype `harpoon`. Make sure not to add this filetype to your mark list (it's excluded by default).
+</Warning>
+
+## Highlight groups
+
+The quick menu uses custom highlight groups that you can configure:
+
+- `HarpoonWindow` - The main menu window
+- `HarpoonBorder` - The menu border
+- `HarpoonCurrentFile` - Highlights the currently active file
+
+```lua
+-- Example: Link to existing highlight groups
+vim.cmd([[
+    highlight! link HarpoonWindow Normal
+    highlight! link HarpoonBorder FloatBorder
+    highlight! link HarpoonCurrentFile Visual
+]])
+```
+
+## Direct navigation without the menu
+
+You can navigate to marks directly without opening the menu:
+
+```lua
+local ui = require("harpoon.ui")
+
+-- Navigate to mark 1
+ui.nav_file(1)
+
+-- Navigate to next mark in the list
+ui.nav_next()
+
+-- Navigate to previous mark
+ui.nav_prev()
+```
+
+These functions are particularly useful for setting up quick keybindings:
+
+```lua
+vim.keymap.set("n", "<leader>1", function() require("harpoon.ui").nav_file(1) end)
+vim.keymap.set("n", "<leader>2", function() require("harpoon.ui").nav_file(2) end)
+vim.keymap.set("n", "<C-n>", function() require("harpoon.ui").nav_next() end)
+vim.keymap.set("n", "<C-p>", function() require("harpoon.ui").nav_prev() end)
+```

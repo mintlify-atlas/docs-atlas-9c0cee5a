@@ -1,0 +1,116 @@
+---
+title: Introduction
+description: Get you where you want with the fewest keystrokes
+---
+
+Harpoon is a Neovim plugin that solves a simple but critical problem: quickly navigating between the small set of files you're actively working on. No more fuzzy finding, endless `:bnext` cycling, or trying to remember which buffer contains that file you were just editing.
+
+## Why Harpoon?
+
+You're working on a codebase and find yourself frequenting a small set of files. Fuzzy finders are powerful but slow you down when you know exactly where you want to go. Buffer navigation with `:bnext` and `:bprev` gets repetitive. Alternate file (`CTRL-^`) only works for two files. You need something better.
+
+Harpoon lets you mark files and navigate to them with persistent keybindings. Think of it as bookmarks on steroids - mark the files that matter, jump between them instantly, and maintain context across sessions.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install Harpoon with your favorite plugin manager
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in under 2 minutes
+  </Card>
+  <Card title="File navigation" icon="file" href="/concepts/marks">
+    Learn how to mark and navigate between files
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/setup">
+    Customize Harpoon to match your workflow
+  </Card>
+</CardGroup>
+
+## Key features
+
+### Persistent file marks
+
+Marks are saved per project and automatically update their position within files as you edit. Unlike vim's global marks, Harpoon marks are designed for project-based workflows.
+
+```lua
+-- Mark the current file
+require("harpoon.mark").add_file()
+
+-- Navigate to mark 1
+require("harpoon.ui").nav_file(1)
+```
+
+### Quick menu interface
+
+View all your marked files in a popup menu where you can reorder, delete, or open them in splits and tabs.
+
+```lua
+-- Toggle the quick menu
+require("harpoon.ui").toggle_quick_menu()
+```
+
+From the menu:
+- Press `Enter` to open a file
+- Press `CTRL-V` to open in a vertical split
+- Press `CTRL-X` to open in a horizontal split  
+- Press `CTRL-T` to open in a new tab
+- Press `q` or `ESC` to close
+
+### Terminal management
+
+Harpoon provides persistent terminals that integrate seamlessly with your workflow. Navigate between terminals, send commands, and maintain context just like with files.
+
+```lua
+-- Navigate to terminal 1 (creates it if it doesn't exist)
+require("harpoon.term").gotoTerminal(1)
+
+-- Send a command to terminal 1
+require("harpoon.term").sendCommand(1, "npm test")
+```
+
+### Tmux integration
+
+Harpoon works out of the box with tmux, letting you navigate and send commands to tmux windows and panes.
+
+```lua
+-- Go to tmux window 1
+require("harpoon.tmux").gotoTerminal(1)
+
+-- Send command to tmux window 1
+require("harpoon.tmux").sendCommand(1, "ls -la")
+```
+
+## Quick example
+
+Here's the most common Harpoon workflow:
+
+```lua
+local mark = require("harpoon.mark")
+local ui = require("harpoon.ui")
+
+-- Mark your frequently used files
+vim.keymap.set("n", "<leader>a", mark.add_file)
+
+-- Open the quick menu
+vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu)
+
+-- Navigate to specific marks
+vim.keymap.set("n", "<C-h>", function() ui.nav_file(1) end)
+vim.keymap.set("n", "<C-t>", function() ui.nav_file(2) end)
+vim.keymap.set("n", "<C-n>", function() ui.nav_file(3) end)
+vim.keymap.set("n", "<C-s>", function() ui.nav_file(4) end)
+
+-- Cycle through marks
+vim.keymap.set("n", "<C-S-P>", ui.nav_prev)
+vim.keymap.set("n", "<C-S-N>", ui.nav_next)
+```
+
+<Note>
+  Harpoon requires Neovim 0.5.0+ and [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) as a dependency.
+</Note>
+
+## What's next?
+
+<Card title="Get started with Harpoon" icon="play" href="/quickstart">
+  Follow our quickstart guide to mark your first file and start navigating
+</Card>

@@ -1,0 +1,345 @@
+---
+title: 'Global Settings'
+description: 'Configuration options that apply across all projects'
+---
+
+## Overview
+
+Global settings control Harpoon's behavior across all projects. These are configured within the `global_settings` table passed to `setup()`:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        save_on_toggle = false,
+        save_on_change = true,
+        -- ... other settings
+    }
+})
+```
+
+## All Global Settings
+
+### save_on_toggle
+
+<ParamField path="save_on_toggle" type="boolean" default="false">
+  When enabled, saves marks to disk when toggling the UI menu instead of requiring `:w` to save manually.
+</ParamField>
+
+**When to enable:**
+- You want marks saved immediately when closing the quick menu
+- You don't want to manually save the marks file
+
+**When to disable:**
+- You prefer explicit control over when marks are persisted
+- You want to review changes before saving
+
+```lua
+global_settings = {
+    save_on_toggle = true  -- Auto-save on menu close
+}
+```
+
+<Note>
+  With `save_on_toggle = false`, you need to manually save the marks menu with `:w` before closing it to persist changes.
+</Note>
+
+### save_on_change
+
+<ParamField path="save_on_change" type="boolean" default="true">
+  Automatically saves the harpoon file whenever marks are modified. Disabling this is not recommended.
+</ParamField>
+
+**This setting controls automatic persistence of:**
+- Adding new marks with `require("harpoon.mark").add_file()`
+- Removing marks
+- Reordering marks
+- Updating mark positions in files
+
+```lua
+global_settings = {
+    save_on_change = true  -- Recommended: keep enabled
+}
+```
+
+<Warning>
+  Disabling `save_on_change` can lead to data loss. Your marks won't be saved automatically, and you may lose them if Neovim crashes or exits unexpectedly.
+</Warning>
+
+### enter_on_sendcmd
+
+<ParamField path="enter_on_sendcmd" type="boolean" default="false">
+  When enabled, automatically presses Enter after sending a command to a terminal with `sendCommand()`.
+</ParamField>
+
+**Behavior:**
+- `false`: Command is typed but not executed (you can edit before running)
+- `true`: Command is immediately executed in the terminal
+
+```lua
+global_settings = {
+    enter_on_sendcmd = true  -- Auto-execute commands
+}
+```
+
+**Example usage:**
+
+```lua
+-- With enter_on_sendcmd = false
+require("harpoon.term").sendCommand(1, "npm run dev")
+-- Result: "npm run dev" appears in terminal 1, waiting for Enter
+
+-- With enter_on_sendcmd = true
+require("harpoon.term").sendCommand(1, "npm run dev")
+-- Result: Command executes immediately
+```
+
+### tmux_autoclose_windows
+
+<ParamField path="tmux_autoclose_windows" type="boolean" default="false">
+  Automatically closes any tmux windows created by Harpoon when you exit Neovim.
+</ParamField>
+
+**Use cases:**
+- Enable: You want clean tmux sessions without leftover windows
+- Disable: You want tmux windows to persist after closing Neovim
+
+```lua
+global_settings = {
+    tmux_autoclose_windows = true  -- Clean up on exit
+}
+```
+
+<Note>
+  This only affects tmux windows created through `require("harpoon.tmux").gotoTerminal()` or `sendCommand()`, not manually created tmux windows.
+</Note>
+
+### excluded_filetypes
+
+<ParamField path="excluded_filetypes" type="table" default='{ "harpoon" }'>
+  List of filetypes that should not be added to the harpoon marks list.
+</ParamField>
+
+**Common filetypes to exclude:**
+- Plugin UI windows (`"NvimTree"`, `"neo-tree"`)
+- Fuzzy finders (`"TelescopePrompt"`, `"fzf"`)
+- Help files (`"help"`)
+- Temporary buffers (`"nofile"`, `"terminal"`)
+
+```lua
+global_settings = {
+    excluded_filetypes = {
+        "harpoon",
+        "NvimTree",
+        "TelescopePrompt",
+        "help",
+        "qf"
+    }
+}
+```
+
+**Why exclude filetypes:**
+Prevents cluttering your marks with UI buffers or temporary files that you don't want quick access to.
+
+### mark_branch
+
+<ParamField path="mark_branch" type="boolean" default="false">
+  When enabled, stores marks separately for each git branch within a git repository.
+</ParamField>
+
+**How it works:**
+- `false`: Marks are shared across all branches in a project
+- `true`: Each git branch has its own set of marks
+
+```lua
+global_settings = {
+    mark_branch = true  -- Per-branch marks
+}
+```
+
+**Use case:**
+You work on different features in different branches, and each feature involves a different set of files. With `mark_branch = true`, switching branches automatically switches to that branch's marks.
+
+<Accordion title="Example: Branch-Specific Workflow">
+  **Scenario:** You're working on two features:
+  
+  - Branch `feature/auth`: Files are `login.tsx`, `signup.tsx`, `auth.utils.ts`
+  - Branch `feature/dashboard`: Files are `dashboard.tsx`, `widgets.tsx`, `data.service.ts`
+  
+  With `mark_branch = true`:
+  ```bash
+  # On feature/auth branch
+  git checkout feature/auth
+  # Your marks: login.tsx, signup.tsx, auth.utils.ts
+  
+  # Switch to dashboard
+  git checkout feature/dashboard
+  # Your marks automatically switch to: dashboard.tsx, widgets.tsx, data.service.ts
+  ```
+  
+  With `mark_branch = false`, both branches share the same marks list.
+</Accordion>
+
+### tabline
+
+<ParamField path="tabline" type="boolean" default="false">
+  Enables a tabline at the top of Neovim showing your harpoon marks.
+</ParamField>
+
+```lua
+global_settings = {
+    tabline = true,
+    tabline_prefix = "   ",
+    tabline_suffix = "   "
+}
+```
+
+**Visual appearance:**
+When enabled, shows your marked files as tabs at the top of the screen:
+```
+   1: main.lua     2: config.lua     3: utils.lua   
+```
+
+<Note>
+  Customize tabline colors using these highlight groups:
+  - `HarpoonInactive`: Inactive marks
+  - `HarpoonActive`: Currently active mark
+  - `HarpoonNumberActive`: Number of active mark
+  - `HarpoonNumberInactive`: Number of inactive marks
+</Note>
+
+### tabline_prefix
+
+<ParamField path="tabline_prefix" type="string" default='"   "'>
+  String to display before each mark in the tabline.
+</ParamField>
+
+```lua
+global_settings = {
+    tabline = true,
+    tabline_prefix = " >> ",  -- Custom prefix
+}
+```
+
+Result:
+```
+ >> 1: main.lua >> 2: config.lua >> 3: utils.lua
+```
+
+### tabline_suffix
+
+<ParamField path="tabline_suffix" type="string" default='"   "'>
+  String to display after each mark in the tabline.
+</ParamField>
+
+```lua
+global_settings = {
+    tabline = true,
+    tabline_suffix = " | ",  -- Custom suffix
+}
+```
+
+Result:
+```
+   1: main.lua |    2: config.lua |    3: utils.lua | 
+```
+
+## Complete Example
+
+Here's a comprehensive configuration using all global settings:
+
+```lua
+require("harpoon").setup({
+    global_settings = {
+        -- Save marks when closing the quick menu
+        save_on_toggle = false,
+        
+        -- Always save on any mark changes (recommended)
+        save_on_change = true,
+        
+        -- Don't auto-execute terminal commands
+        enter_on_sendcmd = false,
+        
+        -- Keep tmux windows after closing Neovim
+        tmux_autoclose_windows = false,
+        
+        -- Prevent UI buffers from being marked
+        excluded_filetypes = {
+            "harpoon",
+            "NvimTree",
+            "neo-tree",
+            "TelescopePrompt",
+            "help",
+            "qf",
+            "fugitive"
+        },
+        
+        -- Use per-branch marks in git repositories
+        mark_branch = true,
+        
+        -- Show marks in tabline
+        tabline = true,
+        tabline_prefix = "   ",
+        tabline_suffix = "   ",
+    }
+})
+```
+
+## Accessing Global Settings
+
+To programmatically access global settings in Lua:
+
+```lua
+local settings = require("harpoon").get_global_settings()
+print(vim.inspect(settings))
+```
+
+This returns the current global settings table.
+
+## Common Configurations
+
+<CodeGroup>
+
+```lua Minimal (Defaults)
+require("harpoon").setup({
+    global_settings = {}
+})
+```
+
+```lua Aggressive Auto-Save
+require("harpoon").setup({
+    global_settings = {
+        save_on_toggle = true,
+        save_on_change = true,
+    }
+})
+```
+
+```lua Branch-Based Workflow
+require("harpoon").setup({
+    global_settings = {
+        mark_branch = true,
+        save_on_change = true,
+    }
+})
+```
+
+```lua Terminal Power User
+require("harpoon").setup({
+    global_settings = {
+        enter_on_sendcmd = true,
+        tmux_autoclose_windows = true,
+    }
+})
+```
+
+```lua With Tabline
+require("harpoon").setup({
+    global_settings = {
+        tabline = true,
+        tabline_prefix = " ↪ ",
+        tabline_suffix = " ",
+    }
+})
+```
+
+</CodeGroup>

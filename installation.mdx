@@ -1,0 +1,149 @@
+---
+title: Installation
+description: Install Harpoon in your Neovim configuration
+---
+
+Harpoon is a Neovim plugin that can be installed with any standard plugin manager. Follow the instructions below for your preferred method.
+
+## Requirements
+
+Before installing Harpoon, ensure you have:
+
+- **Neovim 0.5.0 or higher** - Harpoon uses Lua APIs introduced in Neovim 0.5
+- **plenary.nvim** - Required dependency for file operations and popup windows
+
+<Note>
+  Check your Neovim version by running `:version` in Neovim or `nvim --version` in your terminal.
+</Note>
+
+## Installation methods
+
+<Steps>
+  <Step title="Choose your plugin manager">
+    Select the installation method that matches your plugin manager below.
+  </Step>
+  
+  <Step title="Install the plugin">
+    Add Harpoon to your Neovim configuration using one of these methods:
+
+    <CodeGroup>
+      ```lua lazy.nvim
+      -- Using lazy.nvim
+      {
+        "ThePrimeagen/harpoon",
+        dependencies = {
+          "nvim-lua/plenary.nvim",
+        },
+      }
+      ```
+
+      ```lua packer.nvim
+      -- Using packer.nvim
+      use({
+        "ThePrimeagen/harpoon",
+        requires = { "nvim-lua/plenary.nvim" },
+      })
+      ```
+
+      ```vim vim-plug
+      " Using vim-plug
+      Plug 'nvim-lua/plenary.nvim'
+      Plug 'ThePrimeagen/harpoon'
+      ```
+
+      ```lua pckr.nvim
+      -- Using pckr.nvim  
+      {
+        "ThePrimeagen/harpoon",
+        requires = { "nvim-lua/plenary.nvim" },
+      }
+      ```
+    </CodeGroup>
+
+    <Tip>
+      If you don't already have plenary.nvim installed, make sure to include it as shown above. Many popular plugins depend on it, so you may already have it in your configuration.
+    </Tip>
+  </Step>
+
+  <Step title="Restart and install">
+    After adding Harpoon to your configuration:
+
+    **For lazy.nvim:**
+    - Restart Neovim, and lazy.nvim will automatically install the plugin
+    - Or run `:Lazy sync` to install immediately
+
+    **For packer.nvim:**
+    - Run `:PackerSync` to install the plugin
+    - Restart Neovim
+
+    **For vim-plug:**
+    - Run `:PlugInstall` in Neovim
+    - Restart Neovim
+
+    **For pckr.nvim:**
+    - Run `:Pckr sync`
+    - Restart Neovim
+  </Step>
+
+  <Step title="Verify installation">
+    Verify Harpoon is installed correctly by running this command in Neovim:
+
+    ```vim
+    :lua print(vim.inspect(require("harpoon")))
+    ```
+
+    If you see a table with Harpoon's functions, the installation was successful.
+  </Step>
+</Steps>
+
+## Basic setup
+
+Harpoon works out of the box without any configuration, but you'll want to set up some keybindings to make it useful.
+
+Add this to your Neovim configuration:
+
+```lua
+local mark = require("harpoon.mark")
+local ui = require("harpoon.ui")
+
+vim.keymap.set("n", "<leader>a", mark.add_file)
+vim.keymap.set("n", "<C-e>", ui.toggle_quick_menu)
+
+vim.keymap.set("n", "<C-h>", function() ui.nav_file(1) end)
+vim.keymap.set("n", "<C-t>", function() ui.nav_file(2) end)
+vim.keymap.set("n", "<C-n>", function() ui.nav_file(3) end)
+vim.keymap.set("n", "<C-s>", function() ui.nav_file(4) end)
+```
+
+<Warning>
+  The keybindings above are examples. Make sure they don't conflict with your existing keybindings. Adjust them to fit your workflow.
+</Warning>
+
+## Optional configuration
+
+If you want to customize Harpoon's behavior, you can call the setup function:
+
+```lua
+require("harpoon").setup({
+  global_settings = {
+    save_on_toggle = false,
+    save_on_change = true,
+    enter_on_sendcmd = false,
+    tmux_autoclose_windows = false,
+    excluded_filetypes = { "harpoon" },
+    mark_branch = false,
+  },
+})
+```
+
+<Tip>
+  You don't need to call `setup()` if you're happy with the default settings. Harpoon will work perfectly fine without any configuration.
+</Tip>
+
+## What's next?
+
+Now that Harpoon is installed, follow the quickstart guide to learn how to use it:
+
+<Card title="Quickstart guide" icon="rocket" href="/quickstart">
+  Mark your first file and start navigating in under 2 minutes
+</Card>
