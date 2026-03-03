@@ -1,0 +1,162 @@
+---
+title: Command UI API
+description: Manage and execute terminal commands through an interactive menu
+icon: terminal
+---
+
+The `cmd-ui` API provides an interactive menu for managing saved terminal commands. This allows you to store frequently-used commands and execute them in any terminal with a visual interface.
+
+<Note>
+  The command UI is separate from the file navigation UI. It's specifically designed for managing terminal commands that can be sent to terminals.
+</Note>
+
+## toggle_quick_menu
+
+Opens or closes the command menu showing all saved terminal commands.
+
+### Behavior
+
+- If the menu is already open, it closes the menu
+- If closed, opens a floating window showing all saved commands from the terminal config
+- Commands can be edited directly in the menu
+- Menu respects `save_on_toggle` and `save_on_change` settings
+- Line numbers are displayed for easy reference
+
+### Keybindings
+
+When the command menu is open:
+
+- **Enter** - Select command and prompt for terminal index to send it to
+- **q** or **ESC** - Close the menu
+- Edit commands directly and they will be saved (if `save_on_change` is true)
+
+### Example
+
+```lua
+-- Open/close the command menu
+require("harpoon.cmd-ui").toggle_quick_menu()
+
+-- Typical keybinding
+vim.keymap.set("n", "<leader>cm", function()
+  require("harpoon.cmd-ui").toggle_quick_menu()
+end, { desc = "Toggle Harpoon command menu" })
+```
+
+## select_menu_item
+
+Selects a command from the menu and prompts for a terminal index to send it to.
+
+### Behavior
+
+- Gets the command at the current cursor line
+- Closes the menu (with save if needed)
+- Prompts user to input a terminal index (defaults to 1 if empty)
+- Sends the selected command to the specified terminal using `term.sendCommand()`
+
+### Example
+
+```lua
+-- This is called automatically when pressing Enter in the command menu
+-- You typically don't call this directly, but it's available if needed
+require("harpoon.cmd-ui").select_menu_item()
+```
+
+## on_menu_save
+
+Saves changes made in the command menu back to the terminal command list.
+
+### Behavior
+
+- Reads all lines from the command menu buffer
+- Filters out whitespace-only lines
+- Updates the terminal command list using `term.set_cmd_list()`
+- Triggered automatically based on `save_on_toggle` and `save_on_change` settings
+
+### Example
+
+```lua
+-- This is called automatically by autocmds
+-- You typically don't call this directly
+require("harpoon.cmd-ui").on_menu_save()
+```
+
+## Complete Workflow Example
+
+Here's a complete workflow using the command UI:
+
+```lua
+local cmd_ui = require("harpoon.cmd-ui")
+local term = require("harpoon.term")
+
+-- Set up keybinding to open command menu
+vim.keymap.set("n", "<leader>cm", cmd_ui.toggle_quick_menu)
+
+-- Configure Harpoon with preset commands
+require("harpoon").setup({
+  projects = {
+    ["/path/to/your/project"] = {
+      term = {
+        cmds = {
+          "npm test",
+          "npm run dev",
+          "git status",
+          "cargo build --release"
+        }
+      }
+    }
+  }
+})
+
+-- Usage workflow:
+-- 1. Press <leader>cm to open command menu
+-- 2. Navigate to the command you want (e.g., line 1 for "npm test")
+-- 3. Press Enter
+-- 4. Input terminal index (or press Enter for default 1)
+-- 5. Command is sent to that terminal
+```
+
+## Adding Commands Programmatically
+
+You can also add commands programmatically without using the menu:
+
+```lua
+local term = require("harpoon.term")
+
+-- Add a new command to the list
+term.add_cmd("docker-compose up")
+
+-- Send a command by its index in the command list
+term.sendCommand(1, 1)  -- Sends command 1 to terminal 1
+```
+
+## Configuration
+
+The command UI respects these global settings:
+
+<ParamField path="save_on_toggle" type="boolean" default={false}>
+  Save commands when toggling the menu open/closed
+</ParamField>
+
+<ParamField path="save_on_change" type="boolean" default={true}>
+  Auto-save commands as you edit them in the menu
+</ParamField>
+
+## Integration with Terminal API
+
+The command UI works seamlessly with the [Terminal API](/api/term):
+
+```lua
+local cmd_ui = require("harpoon.cmd-ui")
+local term = require("harpoon.term")
+
+-- Open menu and manage commands visually
+cmd_ui.toggle_quick_menu()
+
+-- Or send commands programmatically
+term.sendCommand(1, 1)  -- Send command 1 to terminal 1
+term.sendCommand(2, "ls -la")  -- Send custom command to terminal 2
+```
+
+<Card title="Terminal API" icon="terminal" href="/api/term">
+  Learn more about the Terminal API and command execution
+</Card>

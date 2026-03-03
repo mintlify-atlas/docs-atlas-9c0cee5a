@@ -307,3 +307,54 @@ local win_info = require("harpoon.ui").location_window(options)
   - `bufnr`: Buffer number
   - `win_id`: Window ID
 </ResponseField>
+
+### notification
+
+Show a notification window in the top-right corner.
+
+```lua
+local info = require("harpoon.ui").notification(text)
+```
+
+<ParamField path="text" type="string" required>
+  Text to display in the notification
+</ParamField>
+
+<ResponseField name="return" type="table">
+  Returns table with:
+  - `bufnr`: Buffer number of notification window
+  - `win_id`: Window ID of notification window
+</ResponseField>
+
+```lua
+-- Example: Show notification
+local ui = require("harpoon.ui")
+local info = ui.notification("Mark added successfully!")
+
+-- Close after 2 seconds
+vim.defer_fn(function()
+  ui.close_notification(info.bufnr)
+end, 2000)
+```
+
+### close_notification
+
+Close a notification window.
+
+```lua
+require("harpoon.ui").close_notification(bufnr)
+```
+
+<ParamField path="bufnr" type="number" required>
+  Buffer number of the notification to close
+</ParamField>
+
+```lua
+-- Example: Show and auto-close notification
+local ui = require("harpoon.ui")
+local notification = ui.notification("Operation complete!")
+
+vim.defer_fn(function()
+  ui.close_notification(notification.bufnr)
+end, 3000)  -- Close after 3 seconds
+```

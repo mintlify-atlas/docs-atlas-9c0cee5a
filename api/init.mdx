@@ -1,0 +1,318 @@
+---
+title: Core API
+description: Core Harpoon configuration and management functions
+icon: gear
+---
+
+The core `harpoon` module provides setup, configuration management, and utility functions for Harpoon.
+
+## setup
+
+Initialize Harpoon with your configuration.
+
+### Behavior
+
+- Merges user config, cache config, and default settings
+- Sets up autocommands for cursor position tracking
+- Initializes tabline if enabled
+- Must be called before using other Harpoon functions (can be called with no arguments for defaults)
+
+### Parameters
+
+<ParamField path="config" type="table" optional>
+  Configuration table with optional fields:
+  - `global_settings`: Global configuration options
+  - `projects`: Project-specific configuration
+  - `menu`: Menu appearance configuration
+</ParamField>
+
+### Example
+
+```lua
+-- Basic setup with defaults
+require("harpoon").setup()
+
+-- With custom configuration
+require("harpoon").setup({
+  global_settings = {
+    save_on_toggle = false,
+    save_on_change = true,
+    enter_on_sendcmd = false,
+    tmux_autoclose_windows = false,
+    excluded_filetypes = { "harpoon" },
+    mark_branch = false,
+  },
+  projects = {
+    ["/path/to/project"] = {
+      term = {
+        cmds = {
+          "npm test",
+          "npm run dev"
+        }
+      }
+    }
+  },
+  menu = {
+    width = vim.api.nvim_win_get_width(0) - 4,
+    height = 10
+  }
+})
+```
+
+---
+
+## save
+
+Manually save Harpoon configuration to disk.
+
+### Behavior
+
+- Refreshes other projects from disk before saving to avoid overwriting changes
+- Writes the current configuration to the cache file
+- Automatically called when `save_on_change` is enabled
+
+### Example
+
+```lua
+-- Manually save configuration
+require("harpoon").save()
+```
+
+<Note>
+  You typically don't need to call this directly as Harpoon auto-saves when `save_on_change` is true (default).
+</Note>
+
+---
+
+## get_global_settings
+
+Get the current global settings table.
+
+### Returns
+
+<ResponseField name="return" type="table">
+  Table containing all global settings (save_on_toggle, save_on_change, etc.)
+</ResponseField>
+
+### Example
+
+```lua
+local settings = require("harpoon").get_global_settings()
+print("Save on change:", settings.save_on_change)
+print("Mark branch:", settings.mark_branch)
+```
+
+---
+
+## get_mark_config
+
+Get the mark configuration for the current project.
+
+### Behavior
+
+- Returns marks for the current project
+- Respects `mark_branch` setting (returns branch-specific marks if enabled)
+- Ensures proper config structure exists
+
+### Returns
+
+<ResponseField name="return" type="table">
+  Table containing:
+  - `marks`: Array of mark objects with `filename`, `row`, and `col`
+</ResponseField>
+
+### Example
+
+```lua
+local mark_config = require("harpoon").get_mark_config()
+for idx, mark in ipairs(mark_config.marks) do
+  print(idx, mark.filename, mark.row, mark.col)
+end
+```
+
+---
+
+## get_term_config
+
+Get the terminal configuration for the current project.
+
+### Returns
+
+<ResponseField name="return" type="table">
+  Table containing:
+  - `cmds`: Array of saved terminal commands
+</ResponseField>
+
+### Example
+
+```lua
+local term_config = require("harpoon").get_term_config()
+for idx, cmd in ipairs(term_config.cmds) do
+  print(idx, cmd)
+end
+```
+
+---
+
+## get_menu_config
+
+Get the menu configuration.
+
+### Returns
+
+<ResponseField name="return" type="table">
+  Table containing menu options (width, height, borderchars, etc.)
+</ResponseField>
+
+### Example
+
+```lua
+local menu_config = require("harpoon").get_menu_config()
+print("Menu width:", menu_config.width or 60)
+print("Menu height:", menu_config.height or 10)
+```
+
+---
+
+## print_config
+
+Print the entire Harpoon configuration for debugging.
+
+### Behavior
+
+- Uses `vim.inspect` to pretty-print the configuration
+- Useful for troubleshooting configuration issues
+
+### Example
+
+```lua
+-- Debug configuration
+:lua require("harpoon").print_config()
+```
+
+---
+
+## refresh_projects_b4update
+
+Refresh all projects from disk except the current one.
+
+### Behavior
+
+- Saves current project config temporarily
+- Reloads all other projects from the cache file
+- Merges current project config back in
+- Used internally before saving to prevent overwriting other project changes
+
+### Example
+
+```lua
+-- Manually refresh projects (rarely needed)
+require("harpoon").refresh_projects_b4update()
+```
+
+<Note>
+  This is called automatically by `save()`. You typically don't need to call it directly.
+</Note>
+
+---
+
+## Configuration Files
+
+Harpoon uses two configuration files:
+
+### Cache Config
+- **Location**: `vim.fn.stdpath("data") .. "/harpoon.json"`
+- **Purpose**: Stores marks, terminal commands, and runtime state
+- **Persistence**: Automatically saved and loaded
+
+### User Config
+- **Location**: `vim.fn.stdpath("config") .. "/harpoon.json"`
+- **Purpose**: Optional static configuration that overrides defaults
+- **Usage**: Create this file if you want persistent configuration
+
+### Example: Check config paths
+
+```lua
+print("Data path:", vim.fn.stdpath("data"))
+print("Config path:", vim.fn.stdpath("config"))
+
+-- Typical paths:
+-- Data: ~/.local/share/nvim/harpoon.json
+-- Config: ~/.config/nvim/harpoon.json
+```
+
+---
+
+## Complete Setup Example
+
+Here's a comprehensive setup example:
+
+```lua
+local harpoon = require("harpoon")
+
+-- Setup with all options
+harpoon.setup({
+  global_settings = {
+    save_on_toggle = false,
+    save_on_change = true,
+    enter_on_sendcmd = false,
+    tmux_autoclose_windows = false,
+    excluded_filetypes = { "harpoon", "NvimTree", "TelescopePrompt" },
+    mark_branch = true,  -- Per-branch marks in git repos
+    tabline = true,
+    tabline_prefix = "  ",
+    tabline_suffix = "  ",
+  },
+  projects = {
+    ["~/projects/web-app"] = {
+      term = {
+        cmds = {
+          "npm run dev",
+          "npm test",
+          "npm run build"
+        }
+      }
+    },
+    ["~/projects/api"] = {
+      term = {
+        cmds = {
+          "cargo run",
+          "cargo test",
+          "cargo build --release"
+        }
+      }
+    }
+  },
+  menu = {
+    width = vim.api.nvim_win_get_width(0) - 4,
+    height = 10,
+    borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" }
+  }
+})
+
+-- Access configuration
+local settings = harpoon.get_global_settings()
+print("Tabline enabled:", settings.tabline)
+
+-- Debug configuration
+-- harpoon.print_config()
+```
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Configuration Setup" icon="gear" href="/configuration/setup">
+    Learn more about configuring Harpoon
+  </Card>
+  <Card title="Global Settings" icon="sliders" href="/configuration/global-settings">
+    All available global settings
+  </Card>
+  <Card title="Project Settings" icon="folder" href="/configuration/project-settings">
+    Project-specific configuration
+  </Card>
+  <Card title="Mark API" icon="bookmark" href="/api/mark">
+    Mark management functions
+  </Card>
+</CardGroup>

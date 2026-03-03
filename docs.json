@@ -47,10 +47,12 @@
       {
         "group": "API Reference",
         "pages": [
+          "api/init",
           "api/mark",
           "api/ui",
           "api/term",
-          "api/tmux"
+          "api/tmux",
+          "api/cmd-ui"
         ]
       },
       {

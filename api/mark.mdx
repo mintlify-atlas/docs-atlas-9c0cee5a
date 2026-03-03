@@ -353,3 +353,87 @@ local count = require("harpoon.mark").get_length()
 <ResponseField name="return" type="number">
   Number of marks in the list
 </ResponseField>
+
+### set_mark_list
+
+Replace the entire mark list with a new list.
+
+```lua
+require("harpoon.mark").set_mark_list(new_list)
+```
+
+<ParamField path="new_list" type="table" required>
+  Array of mark objects or filenames. Can be strings (filenames) or mark objects with `filename`, `row`, and `col` fields
+</ParamField>
+
+```lua
+-- Example: Set marks from a list of filenames
+local mark = require("harpoon.mark")
+mark.set_mark_list({
+  "src/index.js",
+  "src/components/App.jsx",
+  "README.md"
+})
+
+-- Example: Set marks with cursor positions
+mark.set_mark_list({
+  { filename = "src/index.js", row = 10, col = 5 },
+  { filename = "src/App.jsx", row = 25, col = 0 }
+})
+```
+
+### on
+
+Register a callback function that runs when marks change.
+
+```lua
+require("harpoon.mark").on(event, callback)
+```
+
+<ParamField path="event" type="string" required>
+  Event name. Currently only `"changed"` is supported
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  Function to call when the event occurs
+</ParamField>
+
+```lua
+-- Example: Log when marks change
+local mark = require("harpoon.mark")
+mark.on("changed", function()
+  print("Harpoon marks have been updated!")
+end)
+
+-- Example: Update statusline when marks change
+mark.on("changed", function()
+  vim.cmd("redrawstatus")
+end)
+```
+
+### store_offset
+
+Manually store the current cursor position for the current file's mark (if it exists).
+
+```lua
+require("harpoon.mark").store_offset()
+```
+
+This function is called automatically when leaving a buffer, but you can call it manually if needed.
+
+```lua
+-- Example: Force save cursor position before an operation
+local mark = require("harpoon.mark")
+mark.store_offset()
+-- Do something that might change cursor position
+```
+
+### remove_empty_tail
+
+Remove empty marks from the end of the mark list.
+
+```lua
+require("harpoon.mark").remove_empty_tail()
+```
+
+This is called automatically after removing marks. You typically don't need to call it directly.
